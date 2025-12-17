@@ -8,6 +8,7 @@ class ActividadCard extends StatelessWidget {
   final Actividad actividad;
   final Proyecto? proyecto;
   final Persona? personaAsignada;
+  final int? numeroActividadProyecto; // Número de actividad dentro del proyecto
   final VoidCallback? onTap;
   final VoidCallback? onComplete;
   final VoidCallback? onMove;
@@ -18,6 +19,7 @@ class ActividadCard extends StatelessWidget {
     required this.actividad,
     this.proyecto,
     this.personaAsignada,
+    this.numeroActividadProyecto,
     this.onTap,
     this.onComplete,
     this.onMove,
@@ -73,7 +75,7 @@ class ActividadCard extends StatelessWidget {
                   children: [
                     Expanded(
                       child: Text(
-                        actividad.titulo,
+                        _getTituloConProyecto(),
                         style: theme.textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.w600,
                         ),
@@ -188,6 +190,13 @@ class ActividadCard extends StatelessWidget {
       case EstadoActividad.completada:
         return Colors.green;
     }
+  }
+
+  String _getTituloConProyecto() {
+    if (proyecto != null && numeroActividadProyecto != null) {
+      return 'Actividad $numeroActividadProyecto del proyecto ${proyecto!.nombre}';
+    }
+    return actividad.titulo;
   }
 
   Color _getColorFromString(String? colorHex) {

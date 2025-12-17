@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:image_picker/image_picker.dart';
 import '../models/models.dart';
 import '../services/database_service.dart';
+import '../services/file_service.dart';
 import '../utils/responsive.dart';
 
 /// Pantalla de captura rápida de actividades
@@ -22,6 +25,8 @@ class _CapturaScreenState extends State<CapturaScreen> {
   DateTime? _fechaObjetivo;
   List<Proyecto> _proyectos = [];
   bool _isLoading = false;
+  List<String> _archivosAdjuntos = []; // Lista de rutas de archivos
+  final FileService _fileService = FileService();
 
   @override
   void initState() {
@@ -73,9 +78,15 @@ class _CapturaScreenState extends State<CapturaScreen> {
     try {
       final db = DatabaseService().database;
       final ahora = DateTime.now();
+      final nuevaActividadId = const Uuid().v4();
+      
+      // Copiar archivos al directorio de la actividad ANTES de crear la actividad
+      for (var archivoRuta in _archivosAdjuntos) {
+        await _fileService.copiarArchivoAActividad(nuevaActividadId, archivoRuta);
+      }
       
       final nuevaActividad = Actividad(
-        id: const Uuid().v4(),
+        id: nuevaActividadId,
         titulo: _tituloController.text.trim(),
         descripcion: _descripcionController.text.trim().isEmpty
             ? null
@@ -85,13 +96,36 @@ class _CapturaScreenState extends State<CapturaScreen> {
         fechaObjetivo: _fechaObjetivo,
         createdAt: ahora,
         updatedAt: ahora,
-        tieneAdjuntos: false,
+        tieneAdjuntos: _archivosAdjuntos.isNotEmpty,
         orden: 0,
       );
 
       await db.insertarActividad(nuevaActividad);
       
-      // TODO: Registrar en bitácora
+      // Registrar en bitácora
+      final evento = BitacoraEvento(
+        id: const Uuid().v4(),
+        actividadId: nuevaActividadId,
+        tipo: TipoEvento.create,
+        descripcion: 'Actividad creada',
+        timestamp: ahora,
+        usuarioId: null,
+      );
+      await db.insertarEventoBitacora(evento);
+      
+      // Registrar archivos adjuntos en bitácora
+      for (var archivoRuta in _archivosAdjuntos) {
+        final nombreArchivo = archivoRuta.split('/').last;
+        final eventoArchivo = BitacoraEvento(
+          id: const Uuid().v4(),
+          actividadId: nuevaActividadId,
+          tipo: TipoEvento.attach,
+          descripcion: 'Archivo adjunto: $nombreArchivo',
+          timestamp: ahora,
+          usuarioId: null,
+        );
+        await db.insertarEventoBitacora(eventoArchivo);
+      }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -108,6 +142,7 @@ class _CapturaScreenState extends State<CapturaScreen> {
           _estadoDestino = EstadoActividad.bandeja;
           _proyectoId = null;
           _fechaObjetivo = null;
+          _archivosAdjuntos.clear();
         });
       }
     } catch (e) {
@@ -122,6 +157,43 @@ class _CapturaScreenState extends State<CapturaScreen> {
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  Future<void> _seleccionarImagen() async {
+    try {
+      final ImagePicker picker = ImagePicker();
+      final XFile? imagen = await picker.pickImage(source: ImageSource.gallery);
+      
+      if (imagen != null) {
+        setState(() {
+          _archivosAdjuntos.add(imagen.path);
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al seleccionar imagen: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _seleccionarArchivo() async {
+    try {
+      FilePickerResult? result = await FilePicker.platform.pickFiles();
+      
+      if (result != null && result.files.single.path != null) {
+        setState(() {
+          _archivosAdjuntos.add(result.files.single.path!);
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al seleccionar archivo: $e')),
+        );
       }
     }
   }
@@ -352,6 +424,52 @@ class _CapturaScreenState extends State<CapturaScreen> {
                   ),
                   const SizedBox(height: 16),
                 ],
+                
+                // Archivos adjuntos
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Archivos adjuntos',
+                          style: Theme.of(context).textTheme.titleSmall,
+                        ),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            OutlinedButton.icon(
+                              onPressed: _seleccionarImagen,
+                              icon: const Icon(Icons.image),
+                              label: const Text('Imagen'),
+                            ),
+                            OutlinedButton.icon(
+                              onPressed: _seleccionarArchivo,
+                              icon: const Icon(Icons.attach_file),
+                              label: const Text('Archivo'),
+                            ),
+                          ],
+                        ),
+                        if (_archivosAdjuntos.isNotEmpty) ...[
+                          const SizedBox(height: 12),
+                          ..._archivosAdjuntos.map((archivo) => Chip(
+                                label: Text(archivo.split('/').last),
+                                onDeleted: () {
+                                  setState(() {
+                                    _archivosAdjuntos.remove(archivo);
+                                  });
+                                },
+                                deleteIcon: const Icon(Icons.close),
+                              )),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
                 
                 // Botón guardar
                 FilledButton.icon(

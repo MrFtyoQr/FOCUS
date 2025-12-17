@@ -3,6 +3,7 @@ import 'package:uuid/uuid.dart';
 import '../models/models.dart';
 import '../services/database_service.dart';
 import '../utils/responsive.dart';
+import 'detalle_proyecto_screen.dart';
 
 /// Listado de proyectos con métricas
 class ProyectosListaScreen extends StatefulWidget {
@@ -290,7 +291,12 @@ class _ProyectosListaScreenState extends State<ProyectosListaScreen> {
     return Card(
       child: InkWell(
         onTap: () {
-          // TODO: Navegar a detalle de proyecto
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => DetalleProyectoScreen(proyectoId: proyecto.id),
+            ),
+          );
         },
         borderRadius: BorderRadius.circular(12),
         child: Padding(

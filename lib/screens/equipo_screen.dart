@@ -235,12 +235,13 @@ class _EquipoScreenState extends State<EquipoScreen> {
     final total = actividades.length;
     final completadas = contador[EstadoActividad.completada] ?? 0;
     final enProgreso = (contador[EstadoActividad.hoy] ?? 0) +
-        (contador[EstadoActividad.manana] ?? 0);
+        (contador[EstadoActividad.manana] ?? 0) +
+        (contador[EstadoActividad.programado] ?? 0);
     
     return Card(
       child: InkWell(
         onTap: () {
-          // TODO: Navegar a detalle de persona
+          _mostrarDetallePersona(persona, actividades);
         },
         borderRadius: BorderRadius.circular(12),
         child: Padding(
@@ -294,44 +295,23 @@ class _EquipoScreenState extends State<EquipoScreen> {
                 ],
               ),
               const SizedBox(height: 12),
-              // Barras de estado
+              // Resumen de actividades
               if (total > 0) ...[
-                ...EstadoActividad.values
-                    .where((e) => e != EstadoActividad.completada && e != EstadoActividad.bandeja)
-                    .where((e) => (contador[e] ?? 0) > 0)
-                    .map((estado) {
-                  final count = contador[estado] ?? 0;
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 4),
-                    child: Row(
-                      children: [
-                        SizedBox(
-                          width: 80,
-                          child: Text(
-                            estado.nombre,
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
-                        ),
-                        Expanded(
-                          child: LinearProgressIndicator(
-                            value: count / total,
-                            backgroundColor: Colors.grey[200],
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              _getEstadoColor(estado),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          '$count',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
-                        ),
-                      ],
-                    ),
-                  );
-                }),
+                const Divider(),
+                const SizedBox(height: 8),
+                Text(
+                  'Actividades asignadas: $total',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Completadas: $completadas | En proceso: $enProgreso',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Colors.grey[600],
+                      ),
+                ),
               ],
             ],
           ),
@@ -363,6 +343,102 @@ class _EquipoScreenState extends State<EquipoScreen> {
     );
   }
 
+  void _mostrarDetallePersona(Persona persona, List<Actividad> actividades) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.7,
+        minChildSize: 0.5,
+        maxChildSize: 0.95,
+        builder: (context, scrollController) => Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    backgroundColor: Theme.of(context).colorScheme.primary.withOpacity(0.2),
+                    child: Text(
+                      persona.nombre[0].toUpperCase(),
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.primary,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          persona.nombre,
+                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                        ),
+                        if (persona.email != null)
+                          Text(
+                            persona.email!,
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: Colors.grey[600],
+                                ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(),
+            Expanded(
+              child: actividades.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.inbox, size: 64, color: Colors.grey[400]),
+                          const SizedBox(height: 16),
+                          Text(
+                            'No hay actividades asignadas',
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  color: Colors.grey[600],
+                                ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : ListView.builder(
+                      controller: scrollController,
+                      padding: const EdgeInsets.all(16),
+                      itemCount: actividades.length,
+                      itemBuilder: (context, index) {
+                        final actividad = actividades[index];
+                        return Card(
+                          margin: const EdgeInsets.only(bottom: 8),
+                          child: ListTile(
+                            title: Text(actividad.titulo),
+                            subtitle: Text(actividad.estado.nombre),
+                            trailing: Chip(
+                              label: Text(actividad.estado.nombre),
+                              backgroundColor: _getEstadoColor(actividad.estado).withOpacity(0.2),
+                            ),
+                            onTap: () {
+                              Navigator.pop(context);
+                              // TODO: Navegar a detalle de actividad
+                            },
+                          ),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Color _getEstadoColor(EstadoActividad estado) {
     switch (estado) {
       case EstadoActividad.hoy:
@@ -373,6 +449,8 @@ class _EquipoScreenState extends State<EquipoScreen> {
         return Colors.purple;
       case EstadoActividad.pendientes:
         return Colors.red;
+      case EstadoActividad.completada:
+        return Colors.green;
       default:
         return Colors.grey;
     }

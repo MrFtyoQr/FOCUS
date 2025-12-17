@@ -5,6 +5,7 @@ import '../widgets/actividad_card.dart';
 import '../widgets/mover_actividad_bottom_sheet.dart';
 import '../utils/responsive.dart';
 import 'detalle_actividad_screen.dart';
+import 'historial_screen.dart';
 
 /// Pantalla principal del Tablero con segmented control
 /// Implementa el modelo mental: Bandeja, Hoy, Mañana, Programado, Pendientes
@@ -89,7 +90,23 @@ class _TableroScreenState extends State<TableroScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Tablero'), elevation: 0),
+      appBar: AppBar(
+        title: const Text('Tablero'),
+        elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.history),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const HistorialScreen(),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
       body: Column(
         children: [
           // Segmented Control - Estados del método

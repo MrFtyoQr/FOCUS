@@ -142,17 +142,54 @@ class AppDatabase {
 
   Future<void> actualizarActividad(Actividad actividad) async {
     final db = await database;
+    final map = _actividadToMap(actividad);
+    // Asegurar que los valores null se actualicen correctamente
     await db.update(
       'actividades',
-      _actividadToMap(actividad),
+      map,
       where: 'id = ?',
       whereArgs: [actividad.id],
+      conflictAlgorithm: ConflictAlgorithm.replace,
     );
   }
 
   Future<void> eliminarActividad(String id) async {
     final db = await database;
     await db.delete('actividades', where: 'id = ?', whereArgs: [id]);
+  }
+
+  /// Obtiene todas las actividades (para historial)
+  Future<List<Actividad>> getAllActividades() async {
+    final db = await database;
+    final results = await db.query(
+      'actividades',
+      orderBy: 'updatedAt DESC, createdAt DESC',
+    );
+    return results.map((row) => _actividadFromMap(row)).toList();
+  }
+
+  /// Obtiene actividades por proyecto
+  Future<List<Actividad>> getActividadesPorProyecto(String proyectoId) async {
+    final db = await database;
+    final results = await db.query(
+      'actividades',
+      where: 'proyectoId = ?',
+      whereArgs: [proyectoId],
+      orderBy: 'orden ASC, updatedAt DESC',
+    );
+    return results.map((row) => _actividadFromMap(row)).toList();
+  }
+
+  /// Obtiene actividades por persona asignada
+  Future<List<Actividad>> getActividadesPorPersona(String personaId) async {
+    final db = await database;
+    final results = await db.query(
+      'actividades',
+      where: 'personaAsignadaId = ?',
+      whereArgs: [personaId],
+      orderBy: 'estado ASC, updatedAt DESC',
+    );
+    return results.map((row) => _actividadFromMap(row)).toList();
   }
 
   // ========== MÉTODOS PARA PROYECTOS ==========

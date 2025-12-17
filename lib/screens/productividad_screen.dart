@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/models.dart';
 import '../services/database_service.dart';
+import '../services/notification_service.dart';
 import '../utils/responsive.dart';
 
 /// Dashboard de productividad con métricas
@@ -75,11 +76,44 @@ class _ProductividadScreenState extends State<ProductividadScreen> {
       final enHoy = porEstado[EstadoActividad.hoy] ?? 0;
       final ratioBandejaHoy = enBandeja > 0 ? (enHoy / enBandeja * 100) : 0.0;
       
+      // Calcular porcentajes reales por estado
+      // Para cada estado: % = (completadas que pasaron por ese estado) / (total en ese estado + completadas de ese estado)
+      final porcentajesPorEstado = <EstadoActividad, double>{};
+      
+      for (var estado in EstadoActividad.values) {
+        if (estado == EstadoActividad.completada) continue;
+        
+        final totalEnEstado = porEstado[estado] ?? 0;
+        
+        // Para "Hoy": calcular basado en completadas hoy vs total en "Hoy"
+        if (estado == EstadoActividad.hoy) {
+          // Completadas hoy que podrían haber estado en "Hoy"
+          final completadasHoyDeHoy = todasActividades.where((a) {
+            return a.estado == EstadoActividad.completada &&
+                a.updatedAt.isAfter(inicioDia);
+          }).length;
+          
+          // Porcentaje: completadas hoy / (en estado hoy + completadas hoy)
+          final totalRelevante = totalEnEstado + completadasHoyDeHoy;
+          porcentajesPorEstado[estado] = totalRelevante > 0
+              ? (completadasHoyDeHoy / totalRelevante * 100).clamp(0.0, 100.0)
+              : 0.0;
+        } else {
+          // Para otros estados: porcentaje basado en distribución
+          // Simplificado: mostrar qué porcentaje del total representa este estado
+          final totalActividades = todasActividades.length;
+          porcentajesPorEstado[estado] = totalActividades > 0
+              ? (totalEnEstado / totalActividades * 100).clamp(0.0, 100.0)
+              : 0.0;
+        }
+      }
+      
       setState(() {
         _metricas = {
           'completadasHoy': completadasHoy,
           'completadasSemana': completadasSemana,
           'porEstado': porEstado,
+          'porcentajesPorEstado': porcentajesPorEstado,
           'deadlinesProximos': deadlinesProximos,
           'bloqueadas': bloqueadas,
           'ratioBandejaHoy': ratioBandejaHoy,
@@ -97,6 +131,92 @@ class _ProductividadScreenState extends State<ProductividadScreen> {
     }
   }
 
+  void _mostrarMenuNotificaciones() {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Probar Notificaciones',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+            ),
+            const SizedBox(height: 16),
+            ListTile(
+              leading: const Icon(Icons.wb_sunny),
+              title: const Text('Revisión Matutina (8 AM)'),
+              subtitle: const Text('Mover actividades de Mañana a Hoy'),
+              onTap: () async {
+                Navigator.pop(context);
+                final notificationService = NotificationService();
+                await notificationService.mostrarNotificacionPrueba('8am');
+                await notificationService.probarNotificacion8AM();
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Notificación de prueba enviada. Revisa tu bandeja de notificaciones.'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                }
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.wb_twilight),
+              title: const Text('Revisión de Mediodía (1 PM)'),
+              subtitle: const Text('Actividades pendientes en Hoy'),
+              onTap: () async {
+                Navigator.pop(context);
+                final notificationService = NotificationService();
+                await notificationService.mostrarNotificacionPrueba('1pm');
+                await notificationService.probarNotificacion1PM();
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Notificación de prueba enviada. Revisa tu bandeja de notificaciones.'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                }
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.nightlight),
+              title: const Text('Revisión Nocturna (9 PM)'),
+              subtitle: const Text('Ajustar actividades pendientes'),
+              onTap: () async {
+                Navigator.pop(context);
+                final notificationService = NotificationService();
+                await notificationService.mostrarNotificacionPrueba('9pm');
+                await notificationService.probarNotificacion9PM();
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Notificación de prueba enviada. Revisa tu bandeja de notificaciones.'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                }
+              },
+            ),
+            const Divider(),
+            ListTile(
+              leading: const Icon(Icons.info_outline),
+              title: const Text('Información'),
+              subtitle: const Text('Las notificaciones se programan automáticamente cada día a las 8 AM, 1 PM y 9 PM'),
+              onTap: () => Navigator.pop(context),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isTablet = Responsive.isTablet(context);
@@ -106,6 +226,11 @@ class _ProductividadScreenState extends State<ProductividadScreen> {
         title: const Text('Productividad'),
         elevation: 0,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.notifications_active),
+            onPressed: _mostrarMenuNotificaciones,
+            tooltip: 'Probar notificaciones',
+          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: _cargarMetricas,
@@ -284,7 +409,9 @@ class _ProductividadScreenState extends State<ProductividadScreen> {
   }
 
   Widget _buildEstadoBar(EstadoActividad estado, int cantidad, int total) {
-    final porcentaje = total > 0 ? (cantidad / total * 100) : 0.0;
+    // Obtener porcentaje calculado previamente
+    final porcentajesPorEstado = _metricas['porcentajesPorEstado'] as Map<EstadoActividad, double>?;
+    final porcentaje = porcentajesPorEstado?[estado] ?? 0.0;
     final color = _getEstadoColor(estado);
     
     return Padding(

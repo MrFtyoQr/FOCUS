@@ -1,6 +1,6 @@
 {
-    "name": "hipperapp",
-    "short_name": "hipperapp",
+    "name": "HiperApp",
+    "short_name": "HiperApp",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
