@@ -134,84 +134,98 @@ class _ProductividadScreenState extends State<ProductividadScreen> {
   void _mostrarMenuNotificaciones() {
     showModalBottomSheet(
       context: context,
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Probar Notificaciones',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-            ),
-            const SizedBox(height: 16),
-            ListTile(
-              leading: const Icon(Icons.wb_sunny),
-              title: const Text('Revisión Matutina (8 AM)'),
-              subtitle: const Text('Mover actividades de Mañana a Hoy'),
-              onTap: () async {
-                Navigator.pop(context);
-                final notificationService = NotificationService();
-                await notificationService.mostrarNotificacionPrueba('8am');
-                await notificationService.probarNotificacion8AM();
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Notificación de prueba enviada. Revisa tu bandeja de notificaciones.'),
-                      backgroundColor: Colors.green,
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.6,
+        minChildSize: 0.4,
+        maxChildSize: 0.9,
+        expand: false,
+        builder: (context, scrollController) => Container(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Probar Notificaciones',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
                     ),
-                  );
-                }
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.wb_twilight),
-              title: const Text('Revisión de Mediodía (1 PM)'),
-              subtitle: const Text('Actividades pendientes en Hoy'),
-              onTap: () async {
-                Navigator.pop(context);
-                final notificationService = NotificationService();
-                await notificationService.mostrarNotificacionPrueba('1pm');
-                await notificationService.probarNotificacion1PM();
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Notificación de prueba enviada. Revisa tu bandeja de notificaciones.'),
-                      backgroundColor: Colors.green,
+              ),
+              const SizedBox(height: 16),
+              Expanded(
+                child: ListView(
+                  controller: scrollController,
+                  shrinkWrap: true,
+                  children: [
+                    ListTile(
+                      leading: const Icon(Icons.wb_sunny),
+                      title: const Text('Revisión Matutina (8 AM)'),
+                      subtitle: const Text('Mover actividades de Mañana a Hoy'),
+                      onTap: () async {
+                        Navigator.pop(context);
+                        final notificationService = NotificationService();
+                        await notificationService.mostrarNotificacionPrueba('8am');
+                        await notificationService.probarNotificacion8AM();
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Notificación de prueba enviada. Revisa tu bandeja de notificaciones.'),
+                              backgroundColor: Colors.green,
+                            ),
+                          );
+                        }
+                      },
                     ),
-                  );
-                }
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.nightlight),
-              title: const Text('Revisión Nocturna (9 PM)'),
-              subtitle: const Text('Ajustar actividades pendientes'),
-              onTap: () async {
-                Navigator.pop(context);
-                final notificationService = NotificationService();
-                await notificationService.mostrarNotificacionPrueba('9pm');
-                await notificationService.probarNotificacion9PM();
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Notificación de prueba enviada. Revisa tu bandeja de notificaciones.'),
-                      backgroundColor: Colors.green,
+                    ListTile(
+                      leading: const Icon(Icons.wb_twilight),
+                      title: const Text('Revisión de Mediodía (1 PM)'),
+                      subtitle: const Text('Actividades pendientes en Hoy'),
+                      onTap: () async {
+                        Navigator.pop(context);
+                        final notificationService = NotificationService();
+                        await notificationService.mostrarNotificacionPrueba('1pm');
+                        await notificationService.probarNotificacion1PM();
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Notificación de prueba enviada. Revisa tu bandeja de notificaciones.'),
+                              backgroundColor: Colors.green,
+                            ),
+                          );
+                        }
+                      },
                     ),
-                  );
-                }
-              },
-            ),
-            const Divider(),
-            ListTile(
-              leading: const Icon(Icons.info_outline),
-              title: const Text('Información'),
-              subtitle: const Text('Las notificaciones se programan automáticamente cada día a las 8 AM, 1 PM y 9 PM'),
-              onTap: () => Navigator.pop(context),
-            ),
-          ],
+                    ListTile(
+                      leading: const Icon(Icons.nightlight),
+                      title: const Text('Revisión Nocturna (9 PM)'),
+                      subtitle: const Text('Ajustar actividades pendientes'),
+                      onTap: () async {
+                        Navigator.pop(context);
+                        final notificationService = NotificationService();
+                        await notificationService.mostrarNotificacionPrueba('9pm');
+                        await notificationService.probarNotificacion9PM();
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Notificación de prueba enviada. Revisa tu bandeja de notificaciones.'),
+                              backgroundColor: Colors.green,
+                            ),
+                          );
+                        }
+                      },
+                    ),
+                    const Divider(),
+                    ListTile(
+                      leading: const Icon(Icons.info_outline),
+                      title: const Text('Información'),
+                      subtitle: const Text('Las notificaciones se programan automáticamente cada día a las 8 AM, 1 PM y 9 PM'),
+                      onTap: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

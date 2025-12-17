@@ -267,95 +267,150 @@ class _HistorialScreenState extends State<HistorialScreen> {
   }
 
   void _mostrarFiltros() {
+    final isTablet = Responsive.isTablet(context);
     showModalBottomSheet(
       context: context,
-      builder: (context) => Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Filtros',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-            ),
-            const SizedBox(height: 16),
-            
-            // Filtro por estado
-            Text(
-              'Estado',
-              style: Theme.of(context).textTheme.titleSmall,
-            ),
-            const SizedBox(height: 8),
-            SegmentedButton<EstadoActividad?>(
-              segments: [
-                const ButtonSegment<EstadoActividad?>(
-                  value: null,
-                  label: Text('Todos'),
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.6,
+        minChildSize: 0.4,
+        maxChildSize: 0.9,
+        expand: false,
+        builder: (context, scrollController) => Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Filtros',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+              ),
+              const SizedBox(height: 16),
+              Expanded(
+                child: ListView(
+                  controller: scrollController,
+                  shrinkWrap: true,
+                  children: [
+                    // Filtro por estado
+                    Text(
+                      'Estado',
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
+                    const SizedBox(height: 8),
+                    isTablet && MediaQuery.of(context).size.width > 700
+                        ? SegmentedButton<EstadoActividad?>(
+                            segments: [
+                              const ButtonSegment<EstadoActividad?>(
+                                value: null,
+                                label: Text('Todos'),
+                              ),
+                              ...EstadoActividad.values.map((estado) => ButtonSegment<EstadoActividad?>(
+                                    value: estado,
+                                    label: Text(estado.nombre),
+                                  )),
+                            ],
+                            selected: {_filtroEstado},
+                            onSelectionChanged: (Set<EstadoActividad?> newSelection) {
+                              setState(() {
+                                _filtroEstado = newSelection.first;
+                                _aplicarFiltros();
+                              });
+                              Navigator.pop(context);
+                            },
+                          )
+                        : SizedBox(
+                            height: 50,
+                            child: ListView.builder(
+                              scrollDirection: Axis.horizontal,
+                              itemCount: EstadoActividad.values.length + 1,
+                              itemBuilder: (context, index) {
+                                EstadoActividad? estado;
+                                if (index == 0) {
+                                  estado = null;
+                                } else {
+                                  estado = EstadoActividad.values[index - 1];
+                                }
+                                final isSelected = estado == _filtroEstado;
+                                return Padding(
+                                  padding: const EdgeInsets.only(right: 8.0),
+                                  child: FilterChip(
+                                    selected: isSelected,
+                                    label: Text(estado == null ? 'Todos' : estado.nombre),
+                                    onSelected: (selected) {
+                                      if (selected) {
+                                        setState(() {
+                                          _filtroEstado = estado;
+                                          _aplicarFiltros();
+                                        });
+                                        Navigator.pop(context);
+                                      }
+                                    },
+                                    selectedColor: Theme.of(context).colorScheme.primaryContainer,
+                                    checkmarkColor: Theme.of(context).colorScheme.onPrimaryContainer,
+                                    labelStyle: TextStyle(
+                                      color: isSelected
+                                          ? Theme.of(context).colorScheme.onPrimaryContainer
+                                          : Theme.of(context).colorScheme.onSurface,
+                                    ),
+                                    padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                    const SizedBox(height: 16),
+                    
+                    // Filtros de fecha
+                    Text(
+                      'Fechas',
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: _seleccionarFechaDesde,
+                            icon: const Icon(Icons.calendar_today),
+                            label: Text(_fechaDesde != null
+                                ? '${_fechaDesde!.day}/${_fechaDesde!.month}/${_fechaDesde!.year}'
+                                : 'Desde'),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: _seleccionarFechaHasta,
+                            icon: const Icon(Icons.calendar_today),
+                            label: Text(_fechaHasta != null
+                                ? '${_fechaHasta!.day}/${_fechaHasta!.month}/${_fechaHasta!.year}'
+                                : 'Hasta'),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    
+                    // Botón limpiar
+                    FilledButton(
+                      onPressed: () {
+                        setState(() {
+                          _filtroEstado = null;
+                          _fechaDesde = null;
+                          _fechaHasta = null;
+                          _aplicarFiltros();
+                        });
+                        Navigator.pop(context);
+                      },
+                      child: const Text('Limpiar filtros'),
+                    ),
+                  ],
                 ),
-                ...EstadoActividad.values.map((estado) => ButtonSegment<EstadoActividad?>(
-                      value: estado,
-                      label: Text(estado.nombre),
-                    )),
-              ],
-              selected: {_filtroEstado},
-              onSelectionChanged: (Set<EstadoActividad?> newSelection) {
-                setState(() {
-                  _filtroEstado = newSelection.first;
-                  _aplicarFiltros();
-                });
-                Navigator.pop(context);
-              },
-            ),
-            const SizedBox(height: 16),
-            
-            // Filtros de fecha
-            Text(
-              'Fechas',
-              style: Theme.of(context).textTheme.titleSmall,
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: _seleccionarFechaDesde,
-                    icon: const Icon(Icons.calendar_today),
-                    label: Text(_fechaDesde != null
-                        ? '${_fechaDesde!.day}/${_fechaDesde!.month}/${_fechaDesde!.year}'
-                        : 'Desde'),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: _seleccionarFechaHasta,
-                    icon: const Icon(Icons.calendar_today),
-                    label: Text(_fechaHasta != null
-                        ? '${_fechaHasta!.day}/${_fechaHasta!.month}/${_fechaHasta!.year}'
-                        : 'Hasta'),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            
-            // Botón limpiar
-            FilledButton(
-              onPressed: () {
-                setState(() {
-                  _filtroEstado = null;
-                  _fechaDesde = null;
-                  _fechaHasta = null;
-                  _aplicarFiltros();
-                });
-                Navigator.pop(context);
-              },
-              child: const Text('Limpiar filtros'),
-            ),
-          ],
+              ),
+            ],
+          ),
         ),
       ),
     );

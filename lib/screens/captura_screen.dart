@@ -296,43 +296,68 @@ class _CapturaScreenState extends State<CapturaScreen> {
                                 runSpacing: 8,
                                 children: _buildEstadoButtons(),
                               )
-                            : SegmentedButton<EstadoActividad>(
-                                segments: [
-                                  ButtonSegment(
-                                    value: EstadoActividad.bandeja,
-                                    label: const Text('Bandeja'),
-                                    icon: const Icon(Icons.inbox, size: 18),
-                                  ),
-                                  ButtonSegment(
-                                    value: EstadoActividad.hoy,
-                                    label: const Text('Hoy'),
-                                    icon: const Icon(Icons.today, size: 18),
-                                  ),
-                                  ButtonSegment(
-                                    value: EstadoActividad.manana,
-                                    label: const Text('Mañana'),
-                                    icon: const Icon(Icons.event, size: 18),
-                                  ),
-                                  ButtonSegment(
-                                    value: EstadoActividad.programado,
-                                    label: const Text('Programado'),
-                                    icon: const Icon(Icons.calendar_today, size: 18),
-                                  ),
-                                  ButtonSegment(
-                                    value: EstadoActividad.pendientes,
-                                    label: const Text('Pendientes'),
-                                    icon: const Icon(Icons.pause_circle, size: 18),
-                                  ),
-                                ],
-                                selected: {_estadoDestino},
-                                onSelectionChanged: (Set<EstadoActividad> newSelection) {
-                                  setState(() {
-                                    _estadoDestino = newSelection.first;
-                                    if (_estadoDestino != EstadoActividad.programado) {
-                                      _fechaObjetivo = null;
+                            : SizedBox(
+                                height: 50,
+                                child: ListView.builder(
+                                  scrollDirection: Axis.horizontal,
+                                  itemCount: EstadoActividad.values.length,
+                                  itemBuilder: (context, index) {
+                                    final estado = EstadoActividad.values[index];
+                                    final isSelected = estado == _estadoDestino;
+                                    IconData icon;
+                                    switch (estado) {
+                                      case EstadoActividad.bandeja:
+                                        icon = Icons.inbox;
+                                        break;
+                                      case EstadoActividad.hoy:
+                                        icon = Icons.today;
+                                        break;
+                                      case EstadoActividad.manana:
+                                        icon = Icons.event;
+                                        break;
+                                      case EstadoActividad.programado:
+                                        icon = Icons.calendar_today;
+                                        break;
+                                      case EstadoActividad.pendientes:
+                                        icon = Icons.pause_circle;
+                                        break;
+                                      default:
+                                        icon = Icons.circle;
                                     }
-                                  });
-                                },
+                                    return Padding(
+                                      padding: const EdgeInsets.only(right: 8.0),
+                                      child: FilterChip(
+                                        selected: isSelected,
+                                        label: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(icon, size: 18),
+                                            const SizedBox(width: 4),
+                                            Text(estado.nombre),
+                                          ],
+                                        ),
+                                        onSelected: (selected) {
+                                          if (selected) {
+                                            setState(() {
+                                              _estadoDestino = estado;
+                                              if (_estadoDestino != EstadoActividad.programado) {
+                                                _fechaObjetivo = null;
+                                              }
+                                            });
+                                          }
+                                        },
+                                        selectedColor: Theme.of(context).colorScheme.primaryContainer,
+                                        checkmarkColor: Theme.of(context).colorScheme.onPrimaryContainer,
+                                        labelStyle: TextStyle(
+                                          color: isSelected
+                                              ? Theme.of(context).colorScheme.onPrimaryContainer
+                                              : Theme.of(context).colorScheme.onSurface,
+                                        ),
+                                        padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+                                      ),
+                                    );
+                                  },
+                                ),
                               ),
                       ],
                     ),

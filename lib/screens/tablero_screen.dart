@@ -110,21 +110,62 @@ class _TableroScreenState extends State<TableroScreen> {
       body: Column(
         children: [
           // Segmented Control - Estados del método
-          Padding(
-            padding: EdgeInsets.all(Responsive.getHorizontalPadding(context)),
-            child: SegmentedButton<EstadoActividad>(
-              segments: _estados.map((estado) {
-                return ButtonSegment<EstadoActividad>(
-                  value: estado,
-                  label: Text(estado.nombre),
-                );
-              }).toList(),
-              selected: {_estadoSeleccionado},
-              onSelectionChanged: (Set<EstadoActividad> newSelection) {
-                _onEstadoChanged(newSelection.first);
-              },
-            ),
-          ),
+          // En móviles: chips scrollables, en tablets grandes: SegmentedButton
+          Responsive.isTablet(context) && MediaQuery.of(context).size.width > 700
+              ? Padding(
+                  padding: EdgeInsets.all(Responsive.getHorizontalPadding(context)),
+                  child: SegmentedButton<EstadoActividad>(
+                    segments: _estados.map((estado) {
+                      return ButtonSegment<EstadoActividad>(
+                        value: estado,
+                        label: Text(estado.nombre),
+                      );
+                    }).toList(),
+                    selected: {_estadoSeleccionado},
+                    onSelectionChanged: (Set<EstadoActividad> newSelection) {
+                      _onEstadoChanged(newSelection.first);
+                    },
+                  ),
+                )
+              : Container(
+                  height: 56,
+                  padding: const EdgeInsets.symmetric(vertical: 8.0),
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                    itemCount: _estados.length,
+                    itemBuilder: (context, index) {
+                      final estado = _estados[index];
+                      final isSelected = estado == _estadoSeleccionado;
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 8.0),
+                        child: FilterChip(
+                          selected: isSelected,
+                          label: Text(
+                            estado.nombre,
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                            ),
+                          ),
+                          onSelected: (selected) {
+                            if (selected) {
+                              _onEstadoChanged(estado);
+                            }
+                          },
+                          selectedColor: Theme.of(context).colorScheme.primaryContainer,
+                          checkmarkColor: Theme.of(context).colorScheme.onPrimaryContainer,
+                          labelStyle: TextStyle(
+                            color: isSelected
+                                ? Theme.of(context).colorScheme.onPrimaryContainer
+                                : Theme.of(context).colorScheme.onSurface,
+                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+                        ),
+                      );
+                    },
+                  ),
+                ),
           // Lista de actividades con AnimatedSwitcher
           Expanded(
             child: AnimatedSwitcher(

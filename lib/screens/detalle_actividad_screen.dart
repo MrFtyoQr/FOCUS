@@ -1373,39 +1373,76 @@ class _DetalleActividadScreenState extends State<DetalleActividadScreen> {
                   style: Theme.of(context).textTheme.titleSmall,
                 ),
                 const SizedBox(height: 8),
-                SegmentedButton<EstadoActividad>(
-                  segments: [
-                    ButtonSegment(
-                      value: EstadoActividad.bandeja,
-                      label: const Text('Bandeja'),
-                    ),
-                    ButtonSegment(
-                      value: EstadoActividad.hoy,
-                      label: const Text('Hoy'),
-                    ),
-                    ButtonSegment(
-                      value: EstadoActividad.manana,
-                      label: const Text('Mañana'),
-                    ),
-                    ButtonSegment(
-                      value: EstadoActividad.programado,
-                      label: const Text('Programado'),
-                    ),
-                    ButtonSegment(
-                      value: EstadoActividad.pendientes,
-                      label: const Text('Pendientes'),
-                    ),
-                  ],
-                  selected: {estadoSeleccionado},
-                  onSelectionChanged: (Set<EstadoActividad> newSelection) {
-                    setDialogState(() {
-                      estadoSeleccionado = newSelection.first;
-                      if (estadoSeleccionado != EstadoActividad.programado) {
-                        fechaObjetivo = null;
-                      }
-                    });
-                  },
-                ),
+                Responsive.isTablet(context) && MediaQuery.of(context).size.width > 700
+                    ? SegmentedButton<EstadoActividad>(
+                        segments: [
+                          ButtonSegment(
+                            value: EstadoActividad.bandeja,
+                            label: const Text('Bandeja'),
+                          ),
+                          ButtonSegment(
+                            value: EstadoActividad.hoy,
+                            label: const Text('Hoy'),
+                          ),
+                          ButtonSegment(
+                            value: EstadoActividad.manana,
+                            label: const Text('Mañana'),
+                          ),
+                          ButtonSegment(
+                            value: EstadoActividad.programado,
+                            label: const Text('Programado'),
+                          ),
+                          ButtonSegment(
+                            value: EstadoActividad.pendientes,
+                            label: const Text('Pendientes'),
+                          ),
+                        ],
+                        selected: {estadoSeleccionado},
+                        onSelectionChanged: (Set<EstadoActividad> newSelection) {
+                          setDialogState(() {
+                            estadoSeleccionado = newSelection.first;
+                            if (estadoSeleccionado != EstadoActividad.programado) {
+                              fechaObjetivo = null;
+                            }
+                          });
+                        },
+                      )
+                    : SizedBox(
+                        height: 50,
+                        child: ListView.builder(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: EstadoActividad.values.length,
+                          itemBuilder: (context, index) {
+                            final estado = EstadoActividad.values[index];
+                            final isSelected = estado == estadoSeleccionado;
+                            return Padding(
+                              padding: const EdgeInsets.only(right: 8.0),
+                              child: FilterChip(
+                                selected: isSelected,
+                                label: Text(estado.nombre),
+                                onSelected: (selected) {
+                                  if (selected) {
+                                    setDialogState(() {
+                                      estadoSeleccionado = estado;
+                                      if (estadoSeleccionado != EstadoActividad.programado) {
+                                        fechaObjetivo = null;
+                                      }
+                                    });
+                                  }
+                                },
+                                selectedColor: Theme.of(context).colorScheme.primaryContainer,
+                                checkmarkColor: Theme.of(context).colorScheme.onPrimaryContainer,
+                                labelStyle: TextStyle(
+                                  color: isSelected
+                                      ? Theme.of(context).colorScheme.onPrimaryContainer
+                                      : Theme.of(context).colorScheme.onSurface,
+                                ),
+                                padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
                 const SizedBox(height: 16),
                 // Proyecto
                 if (proyectos.isNotEmpty) ...[

@@ -143,38 +143,93 @@ class _DetalleProyectoScreenState extends State<DetalleProyectoScreen> {
           // Filtro por estado y botón crear
           Padding(
             padding: EdgeInsets.all(Responsive.getHorizontalPadding(context)),
-            child: Row(
-              children: [
-                Expanded(
-                  child: SegmentedButton<EstadoActividad?>(
-              segments: [
-                const ButtonSegment<EstadoActividad?>(
-                  value: null,
-                  label: Text('Todas'),
-                ),
-                ...EstadoActividad.values
-                    .where((e) => e != EstadoActividad.completada)
-                    .map((estado) => ButtonSegment<EstadoActividad?>(
-                          value: estado,
-                          label: Text(estado.nombre),
-                        )),
-              ],
-              selected: {_filtroEstado},
-              onSelectionChanged: (Set<EstadoActividad?> newSelection) {
-                setState(() {
-                  _filtroEstado = newSelection.first;
-                });
-              },
+            child: isTablet && MediaQuery.of(context).size.width > 700
+                ? Row(
+                    children: [
+                      Expanded(
+                        child: SegmentedButton<EstadoActividad?>(
+                          segments: [
+                            const ButtonSegment<EstadoActividad?>(
+                              value: null,
+                              label: Text('Todas'),
+                            ),
+                            ...EstadoActividad.values
+                                .where((e) => e != EstadoActividad.completada)
+                                .map((estado) => ButtonSegment<EstadoActividad?>(
+                                      value: estado,
+                                      label: Text(estado.nombre),
+                                    )),
+                          ],
+                          selected: {_filtroEstado},
+                          onSelectionChanged: (Set<EstadoActividad?> newSelection) {
+                            setState(() {
+                              _filtroEstado = newSelection.first;
+                            });
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      FilledButton.icon(
+                        onPressed: () => _mostrarDialogoCrearActividad(context),
+                        icon: const Icon(Icons.add),
+                        label: const Text('Nueva'),
+                      ),
+                    ],
+                  )
+                : Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      SizedBox(
+                        height: 50,
+                        child: ListView.builder(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: EstadoActividad.values
+                                  .where((e) => e != EstadoActividad.completada)
+                                  .length +
+                              1,
+                          itemBuilder: (context, index) {
+                            EstadoActividad? estado;
+                            if (index == 0) {
+                              estado = null;
+                            } else {
+                              estado = EstadoActividad.values
+                                  .where((e) => e != EstadoActividad.completada)
+                                  .elementAt(index - 1);
+                            }
+                            final isSelected = estado == _filtroEstado;
+                            return Padding(
+                              padding: const EdgeInsets.only(right: 8.0),
+                              child: FilterChip(
+                                selected: isSelected,
+                                label: Text(estado == null ? 'Todas' : estado.nombre),
+                                onSelected: (selected) {
+                                  if (selected) {
+                                    setState(() {
+                                      _filtroEstado = estado;
+                                    });
+                                  }
+                                },
+                                selectedColor: Theme.of(context).colorScheme.primaryContainer,
+                                checkmarkColor: Theme.of(context).colorScheme.onPrimaryContainer,
+                                labelStyle: TextStyle(
+                                  color: isSelected
+                                      ? Theme.of(context).colorScheme.onPrimaryContainer
+                                      : Theme.of(context).colorScheme.onSurface,
+                                ),
+                                padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      FilledButton.icon(
+                        onPressed: () => _mostrarDialogoCrearActividad(context),
+                        icon: const Icon(Icons.add),
+                        label: const Text('Nueva'),
+                      ),
+                    ],
                   ),
-                ),
-                const SizedBox(width: 8),
-                FilledButton.icon(
-                  onPressed: () => _mostrarDialogoCrearActividad(context),
-                  icon: const Icon(Icons.add),
-                  label: const Text('Nueva'),
-                ),
-              ],
-            ),
           ),
           
           // Lista de actividades
