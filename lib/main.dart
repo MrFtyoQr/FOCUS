@@ -5,8 +5,19 @@ import 'screens/main_navigation.dart';
 import 'services/database_service.dart';
 import 'services/notification_service.dart';
 
+import 'dart:io';
+import 'package:flutter/material.dart';
+import 'package:sqflite/sqflite.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // 🔑 IMPORTANTE: Inicializar SQLite para Windows / Desktop
+  if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+    sqfliteFfiInit();
+    databaseFactory = databaseFactoryFfi;
+  }
 
   // Inicializar timezone
   tz.initializeTimeZones();
@@ -14,13 +25,12 @@ void main() async {
   // Inicializar base de datos
   await DatabaseService().initialize();
 
-  // Inicializar y programar notificaciones (con manejo de errores)
+  // Inicializar y programar notificaciones
   try {
     final notificationService = NotificationService();
     await notificationService.initialize();
     await notificationService.programarNotificacionesDiarias();
   } catch (e) {
-    // Si falla la inicialización de notificaciones, no bloquear la app
     print('Error al inicializar notificaciones: $e');
   }
 
