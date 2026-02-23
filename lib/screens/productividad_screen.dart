@@ -16,6 +16,9 @@ class _ProductividadScreenState extends State<ProductividadScreen> {
   bool _isLoading = true;
   Map<String, dynamic> _metricas = {};
 
+  /// Llamado al volver a esta pestaña o al recuperar conexión.
+  void refresh() => _cargarMetricas();
+
   @override
   void initState() {
     super.initState();

@@ -45,5 +45,8 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<!-- Permiso para usar Face ID / Touch ID (requerido por el sistema para mostrar el diálogo de desbloqueo) -->
+	<key>NSFaceIDUsageDescription</key>
+	<string>HiperApp usa Face ID o Touch ID para desbloquear la app y proteger tu sesión.</string>
 </dict>
 </plist>

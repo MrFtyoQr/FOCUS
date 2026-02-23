@@ -158,6 +158,16 @@ class AppDatabase {
     await db.delete('actividades', where: 'id = ?', whereArgs: [id]);
   }
 
+  /// Pasa todas las actividades en estado "hoy" a "manana". Según blueprint, al cambiar el día.
+  Future<int> pasarHoyAManana() async {
+    final list = await getActividadesPorEstado(EstadoActividad.hoy);
+    final now = DateTime.now();
+    for (final a in list) {
+      await actualizarActividad(a.copyWith(estado: EstadoActividad.manana, updatedAt: now));
+    }
+    return list.length;
+  }
+
   /// Obtiene todas las actividades (para historial)
   Future<List<Actividad>> getAllActividades() async {
     final db = await database;

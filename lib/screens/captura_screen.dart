@@ -28,6 +28,9 @@ class _CapturaScreenState extends State<CapturaScreen> {
   List<String> _archivosAdjuntos = []; // Lista de rutas de archivos
   final FileService _fileService = FileService();
 
+  /// Llamado al volver a esta pestaña para actualizar lista de proyectos.
+  void refresh() => _cargarProyectos();
+
   @override
   void initState() {
     super.initState();

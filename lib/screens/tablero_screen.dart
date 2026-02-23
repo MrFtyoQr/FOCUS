@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/models.dart';
 import '../services/database_service.dart';
 import '../widgets/actividad_card.dart';
@@ -37,22 +38,32 @@ class _TableroScreenState extends State<TableroScreen> {
     _cargarDatos();
   }
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    // Recargar cuando la pantalla vuelve a ser visible
-    // Esto asegura que se vean las actividades recién creadas
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        _cargarDatos();
+  /// Llamado al volver a esta pestaña o al recuperar conexión (conexión y actualizaciones alineadas).
+  void refresh() => _cargarDatos();
+
+  /// Según blueprint: si cambió el día, pasar actividades de Hoy a Mañana.
+  Future<void> _moverHoyAMananaSiCambioElDia() async {
+    final prefs = await SharedPreferences.getInstance();
+    const key = 'last_actividad_fecha';
+    final lastStr = prefs.getString(key);
+    final now = DateTime.now();
+    final todayStr = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+    if (lastStr != null && lastStr != todayStr) {
+      final n = await DatabaseService().database.pasarHoyAManana();
+      if (n > 0 && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('$n actividad(es) pasaron de Hoy a Mañana')),
+        );
       }
-    });
+    }
+    await prefs.setString(key, todayStr);
   }
 
   Future<void> _cargarDatos() async {
     setState(() => _isLoading = true);
 
     try {
+      await _moverHoyAMananaSiCambioElDia();
       final db = DatabaseService().database;
 
       // Cargar actividades del estado seleccionado

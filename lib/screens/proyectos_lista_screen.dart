@@ -18,6 +18,9 @@ class _ProyectosListaScreenState extends State<ProyectosListaScreen> {
   Map<String, List<Actividad>> _actividadesPorProyecto = {};
   bool _isLoading = true;
 
+  /// Llamado al volver a esta pestaña o al recuperar conexión.
+  void refresh() => _cargarDatos();
+
   @override
   void initState() {
     super.initState();

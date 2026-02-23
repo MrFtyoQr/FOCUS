@@ -3,8 +3,9 @@ import 'package:uuid/uuid.dart';
 import '../models/models.dart';
 import '../services/database_service.dart';
 import '../utils/responsive.dart';
+import '../data/api/estancias_api.dart';
 
-/// Lista del equipo con gestión de personas
+/// Lista del equipo: miembros de estancias (backend) + personas locales (SQLite).
 class EquipoScreen extends StatefulWidget {
   const EquipoScreen({super.key});
 
@@ -17,33 +18,45 @@ class _EquipoScreenState extends State<EquipoScreen> {
   Map<String, List<Actividad>> _actividadesPorPersona = {};
   bool _isLoading = true;
 
+  // Backend: estancias del usuario y miembros de la estancia seleccionada
+  List<EstanciaResponse> _estancias = [];
+  int? _estanciaSeleccionadaId;
+  List<MiembroEstanciaResponse> _miembrosBackend = [];
+  bool _loadingBackend = false;
+
+  final EstanciasApi _estanciasApi = EstanciasApi();
+
+  /// Llamado al volver a esta pestaña o al recuperar conexión.
+  void refresh() {
+    _cargarDatos();
+    _cargarEstanciasYMiembros();
+  }
+
   @override
   void initState() {
     super.initState();
     _cargarDatos();
+    _cargarEstanciasYMiembros();
   }
 
   Future<void> _cargarDatos() async {
     setState(() => _isLoading = true);
-    
+
     try {
       final db = DatabaseService().database;
       final personas = await db.getAllPersonas();
-      
-      // Cargar actividades por persona
+
       final actividadesPorPersona = <String, List<Actividad>>{};
       for (var persona in personas) {
-        // Obtener todas las actividades asignadas a esta persona
         final todasActividades = <Actividad>[];
         for (var estado in EstadoActividad.values) {
           todasActividades.addAll(await db.getActividadesPorEstado(estado));
         }
-        
         actividadesPorPersona[persona.id] = todasActividades
             .where((a) => a.personaAsignadaId == persona.id)
             .toList();
       }
-      
+
       setState(() {
         _personas = personas;
         _actividadesPorPersona = actividadesPorPersona;
@@ -56,6 +69,37 @@ class _EquipoScreenState extends State<EquipoScreen> {
           SnackBar(content: Text('Error al cargar equipo: $e')),
         );
       }
+    }
+  }
+
+  /// Carga estancias del usuario y miembros de la estancia seleccionada (backend).
+  Future<void> _cargarEstanciasYMiembros() async {
+    setState(() => _loadingBackend = true);
+    try {
+      final estancias = await _estanciasApi.list();
+      if (!mounted) return;
+      int? idSeleccionado = _estanciaSeleccionadaId;
+      if (estancias.isNotEmpty && (idSeleccionado == null || !estancias.any((e) => e.id == idSeleccionado))) {
+        idSeleccionado = estancias.first.id;
+      }
+      List<MiembroEstanciaResponse> miembros = [];
+      if (idSeleccionado != null) {
+        miembros = await _estanciasApi.listarMiembros(idSeleccionado);
+      }
+      if (!mounted) return;
+      setState(() {
+        _estancias = estancias;
+        _estanciaSeleccionadaId = idSeleccionado;
+        _miembrosBackend = miembros;
+        _loadingBackend = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _estancias = [];
+        _miembrosBackend = [];
+        _loadingBackend = false;
+      });
     }
   }
 
@@ -165,12 +209,20 @@ class _EquipoScreenState extends State<EquipoScreen> {
   Widget build(BuildContext context) {
     final isTablet = Responsive.isTablet(context);
     final columnCount = Responsive.getColumnCount(context);
-    
+    final padding = Responsive.getHorizontalPadding(context);
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Equipo'),
         elevation: 0,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () {
+              _cargarDatos();
+              _cargarEstanciasYMiembros();
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.add),
             onPressed: _mostrarDialogoCrearPersona,
@@ -179,55 +231,204 @@ class _EquipoScreenState extends State<EquipoScreen> {
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : _personas.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.people_outline, size: 64, color: Colors.grey[400]),
-                      const SizedBox(height: 16),
-                      Text(
-                        'No hay personas en el equipo',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              color: Colors.grey[600],
-                            ),
-                      ),
-                      const SizedBox(height: 8),
-                      FilledButton.icon(
-                        onPressed: _mostrarDialogoCrearPersona,
-                        icon: const Icon(Icons.add),
-                        label: const Text('Agregar primera persona'),
-                      ),
-                    ],
-                  ),
-                )
-              : RefreshIndicator(
-                  onRefresh: _cargarDatos,
-                  child: isTablet
-                      ? GridView.builder(
-                          padding: EdgeInsets.all(Responsive.getHorizontalPadding(context)),
-                          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: columnCount,
-                            crossAxisSpacing: 16,
-                            mainAxisSpacing: 16,
-                            childAspectRatio: 1.1,
+          : RefreshIndicator(
+              onRefresh: () async {
+                await _cargarDatos();
+                await _cargarEstanciasYMiembros();
+              },
+              child: ListView(
+                padding: EdgeInsets.all(padding),
+                children: [
+                  // Sección: Miembros de estancias (backend)
+                  if (_estancias.isNotEmpty) ...[
+                    _buildSeccionMiembrosEstancias(context),
+                    const SizedBox(height: 24),
+                    Divider(height: 1, color: Colors.grey[300]),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Personas (equipo local)',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: Theme.of(context).colorScheme.onSurface,
                           ),
-                          itemCount: _personas.length,
-                          itemBuilder: (context, index) {
-                            return _buildPersonaCard(_personas[index]);
-                          },
-                        )
-                      : ListView.builder(
-                          padding: EdgeInsets.all(Responsive.getHorizontalPadding(context)),
-                          itemCount: _personas.length,
-                          itemBuilder: (context, index) {
-                            return Padding(
-                              padding: const EdgeInsets.only(bottom: 16),
-                              child: _buildPersonaCard(_personas[index]),
-                            );
-                          },
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                  // Sección: Personas locales
+                  if (_personas.isEmpty && _miembrosBackend.isEmpty)
+                    Center(
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 32),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.people_outline, size: 64, color: Colors.grey[400]),
+                            const SizedBox(height: 16),
+                            Text(
+                              'No hay personas en el equipo local',
+                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                    color: Colors.grey[600],
+                                  ),
+                            ),
+                            if (_estancias.isEmpty)
+                              const SizedBox(height: 8),
+                            if (_estancias.isEmpty)
+                              FilledButton.icon(
+                                onPressed: _mostrarDialogoCrearPersona,
+                                icon: const Icon(Icons.add),
+                                label: const Text('Agregar primera persona'),
+                              ),
+                          ],
                         ),
-                ),
+                      ),
+                    )
+                  else if (_personas.isEmpty)
+                    const SizedBox.shrink()
+                  else if (isTablet)
+                    GridView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: columnCount,
+                        crossAxisSpacing: 16,
+                        mainAxisSpacing: 16,
+                        childAspectRatio: 1.1,
+                      ),
+                      itemCount: _personas.length,
+                      itemBuilder: (context, index) => _buildPersonaCard(_personas[index]),
+                    )
+                  else
+                    ...List.generate(
+                      _personas.length,
+                      (index) => Padding(
+                        padding: const EdgeInsets.only(bottom: 16),
+                        child: _buildPersonaCard(_personas[index]),
+                      ),
+                    ),
+                  const SizedBox(height: 24),
+                ],
+              ),
+            ),
+    );
+  }
+
+  Widget _buildSeccionMiembrosEstancias(BuildContext context) {
+    EstanciaResponse? estanciaActual;
+    for (var e in _estancias) {
+      if (e.id == _estanciaSeleccionadaId) {
+        estanciaActual = e;
+        break;
+      }
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text(
+              'Miembros de mis estancias',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
+            ),
+            const Spacer(),
+            if (_estancias.length > 1)
+              DropdownButton<int>(
+                value: _estanciaSeleccionadaId,
+                isExpanded: false,
+                hint: const Text('Estancia'),
+                items: _estancias
+                    .map((e) => DropdownMenuItem<int>(
+                          value: e.id,
+                          child: Text(
+                            e.nombre,
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                          ),
+                        ))
+                    .toList(),
+                onChanged: (id) async {
+                  if (id == null) return;
+                  setState(() {
+                    _estanciaSeleccionadaId = id;
+                    _loadingBackend = true;
+                  });
+                  try {
+                    final miembros = await _estanciasApi.listarMiembros(id);
+                    if (mounted) setState(() {
+                      _miembrosBackend = miembros;
+                      _loadingBackend = false;
+                    });
+                  } catch (_) {
+                    if (mounted) setState(() => _loadingBackend = false);
+                  }
+                },
+              ),
+          ],
+        ),
+        if (estanciaActual != null && _estancias.length == 1)
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text(
+              estanciaActual.nombre,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+            ),
+          ),
+        const SizedBox(height: 12),
+        if (_loadingBackend)
+          const Padding(
+            padding: EdgeInsets.all(24),
+            child: Center(child: CircularProgressIndicator()),
+          )
+        else if (_miembrosBackend.isEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            child: Text(
+              'No hay miembros en esta estancia.',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Colors.grey[600],
+                  ),
+            ),
+          )
+        else
+          ..._miembrosBackend.map(
+            (m) => Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: _buildMiembroBackendCard(context, m),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildMiembroBackendCard(BuildContext context, MiembroEstanciaResponse m) {
+    final nombreCompleto = m.apellido != null ? '${m.nombre} ${m.apellido}' : m.nombre;
+    return Card(
+      child: ListTile(
+        leading: CircleAvatar(
+          backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+          child: Text(
+            nombreCompleto.isNotEmpty ? nombreCompleto[0].toUpperCase() : m.email[0].toUpperCase(),
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onPrimaryContainer,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+        title: Text(
+          nombreCompleto.isEmpty ? m.email : nombreCompleto,
+          style: const TextStyle(fontWeight: FontWeight.w600),
+        ),
+        subtitle: Text('${m.email} • ${m.rolEnEstancia}'),
+        trailing: Chip(
+          label: Text(m.rolEnEstancia),
+          padding: EdgeInsets.zero,
+          visualDensity: VisualDensity.compact,
+        ),
+      ),
     );
   }
 
