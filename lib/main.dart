@@ -3,23 +3,49 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/api/api_client.dart';
 import 'core/router/app_router.dart';
+import 'core/storage/local_prefs.dart';
+import 'core/storage/secure_storage.dart';
 import 'core/theme/app_theme.dart';
+import 'core/mock/mock_repositories.dart';
+import 'features/auth/providers/auth_provider.dart';
+import 'features/dashboard/providers/dashboard_provider.dart';
+import 'features/projects/providers/projects_provider.dart';
+import 'features/team/providers/team_provider.dart';
+import 'features/stats/providers/stats_provider.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Variables de entorno (.env)
-  await dotenv.load(fileName: '.env');
+  await dotenv.load(fileName: 'app.env');
 
-  // Inicializar cliente HTTP con el interceptor JWT
-  ApiClient.instance.initialize();
+  final useMock = dotenv.env['USE_MOCK'] == 'true';
+
+  if (useMock) {
+    // Pre-seed para que el flujo de auth funcione sin backend
+    await SecureStorage.instance.saveTokens(
+      access:  'mock_access_token',
+      refresh: 'mock_refresh_token',
+    );
+    await LocalPrefs.instance.setOnboardingCompleted();
+  } else {
+    ApiClient.instance.initialize();
+  }
 
   runApp(
-    const ProviderScope(
-      child: HiperApp(),
+    ProviderScope(
+      overrides: useMock ? _mockOverrides() : const [],
+      child: const HiperApp(),
     ),
   );
 }
+
+List<Override> _mockOverrides() => [
+  authRepositoryProvider    .overrideWith((_) => MockAuthRepository()),
+  activityRepositoryProvider.overrideWith((_) => MockActivityRepository()),
+  projectRepositoryProvider .overrideWith((_) => MockProjectRepository()),
+  teamRepositoryProvider    .overrideWith((_) => MockTeamRepository()),
+  statsRepositoryProvider   .overrideWith((_) => MockStatsRepository()),
+];
 
 class HiperApp extends ConsumerWidget {
   const HiperApp({super.key});
@@ -27,7 +53,6 @@ class HiperApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(routerProvider);
-
     return MaterialApp.router(
       title: 'HiperApp',
       theme: AppTheme.dark,
