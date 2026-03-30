@@ -1,10 +1,10 @@
-# 📱 HiperApp - Sistema de Hiperproductividad
+# HiperApp - Sistema de Hiperproductividad
 
 > **Aplicación móvil Flutter + Backend FastAPI** para gestión de productividad personal y colaborativa en entornos de alta seguridad.
 
 ---
 
-## 📑 Tabla de Contenidos
+##  Tabla de Contenidos
 
 1. [Visión General](#-visión-general)
 2. [Arquitectura del Backend](#-arquitectura-del-backend)
@@ -28,7 +28,7 @@
 
 ---
 
-## 🎯 Visión General
+##  Visión General
 
 HiperApp es un sistema completo de gestión de productividad diseñado para **entornos de máxima seguridad y gubernamentales**. Combina:
 
@@ -49,7 +49,7 @@ HiperApp es un sistema completo de gestión de productividad diseñado para **en
 
 ---
 
-## 🏗️ Arquitectura del Backend
+##  Arquitectura del Backend
 
 > **Documento fuente**: `BACKEND_ARCHITECTURE_BOCETO.md` (DOC-BE-001)
 
@@ -78,7 +78,7 @@ backend/
 
 ### Principio de Separación
 
-| Capa | Responsabilidad | ❌ NO hacer |
+| Capa | Responsabilidad |  NO hacer |
 |------|-----------------|-------------|
 | **Rutas** | Declarar endpoints, delegar a servicios | Lógica de negocio |
 | **Servicios** | Toda la lógica de negocio | Acceso directo a BD |
@@ -108,7 +108,7 @@ GET    /api/v1/auditoria           # Solo SUPER_ADMIN
 
 ---
 
-## 👥 Roles y Estancias
+##  Roles y Estancias
 
 > **Documento fuente**: `BACKEND_ROLES_Y_ESTANCIAS.md` (DOC-BR-002)
 
@@ -140,11 +140,11 @@ UPDATE usuarios SET rol_id = 2 WHERE email = 'jefe@ejemplo.com';   -- ADMIN
 UPDATE usuarios SET rol_id = 3 WHERE email = 'prof@ejemplo.com';   -- PROPIETARIO
 ```
 
-> ⚠️ **Importante**: Después de cambiar el rol, cerrar sesión y volver a iniciar para que la app refleje los cambios.
+>  **Importante**: Después de cambiar el rol, cerrar sesión y volver a iniciar para que la app refleje los cambios.
 
 ---
 
-## 📄 Documentación del Proyecto
+##  Documentación del Proyecto
 
 > **Documento fuente**: `documentacion.md` (DOC-DOC-003)
 
@@ -178,7 +178,7 @@ dependencies:
 
 ---
 
-## 📖 Manual de Usuario
+##  Manual de Usuario
 
 > **Documento fuente**: `manual_usuario.md` (DOC-MAN-006)
 
@@ -186,21 +186,21 @@ dependencies:
 
 | Pestaña | Función |
 |---------|---------|
-| 📋 **Tablero** | Vista de actividades por estado |
-| ➕ **Captura** | Crear nuevas actividades rápidamente |
-| 📁 **Proyectos** | Gestión de proyectos |
-| 📊 **Productividad** | Métricas y estadísticas |
-| 👥 **Equipo** | Colaboradores y asignaciones |
+|  **Tablero** | Vista de actividades por estado |
+|  **Captura** | Crear nuevas actividades rápidamente |
+|  **Proyectos** | Gestión de proyectos |
+|  **Productividad** | Métricas y estadísticas |
+|  **Equipo** | Colaboradores y asignaciones |
 
 ### Estados de Actividades
 
 ```
-📥 Bandeja      → Captura inicial, sin ejecutar
-📅 Hoy          → Ejecución directa del día
-⏰ Mañana       → Planificación próximo día
-📆 Programado   → Fecha específica futura (requiere fecha)
-⏳ Pendientes   → Bloqueadas por terceros
-✅ Completada   → Finalizadas
+ Bandeja      → Captura inicial, sin ejecutar
+ Hoy          → Ejecución directa del día
+ Mañana       → Planificación próximo día
+ Programado   → Fecha específica futura (requiere fecha)
+ Pendientes   → Bloqueadas por terceros
+ Completada   → Finalizadas
 ```
 
 ### Gestos Rápidos
@@ -219,7 +219,7 @@ dependencies:
 
 ---
 
-## 📱 Arquitectura Móvil
+##  Arquitectura Móvil
 
 > **Documento fuente**: `MOBILE_ARCHITECTURE_INSTRUCCIONES.md` (DOC-MOB-005)
 
@@ -295,7 +295,7 @@ hipperapp/lib/
 
 ---
 
-## ✅ Correcciones QA Aplicadas
+##  Correcciones QA Aplicadas
 
 > **Documento fuente**: `QA_CORRECCIONES_APLICADAS.md` (DOC-QA-007)
 
@@ -330,7 +330,7 @@ hipperapp/lib/
 
 ---
 
-## ⚠️ Errores QA Detallados
+##  Errores QA Detallados
 
 > **Documento fuente**: `QA_ERRORES_DETALLADOS.txt` (DOC-QA-008)
 
@@ -338,17 +338,17 @@ hipperapp/lib/
 
 | Error | Descripción | Estado |
 |-------|-------------|--------|
-| **1** | Rol de usuario en API | ✅ Resuelto (contrato), UI pendiente |
-| **2** | POST /auth/refresh inexistente | ✅ Resuelto |
-| **3** | Capa API móvil incompleta | ✅ Resuelto |
-| **4** | Endpoints tareas/proyectos | ✅ Resuelto |
-| **5** | Health detallado expuesto | ✅ Resuelto |
-| **6** | SECRET_KEY por defecto | ✅ Resuelto |
-| **7** | Navegación por rol | ✅ Resuelto |
+| **1** | Rol de usuario en API |  Resuelto (contrato), UI pendiente |
+| **2** | POST /auth/refresh inexistente |  Resuelto |
+| **3** | Capa API móvil incompleta |  Resuelto |
+| **4** | Endpoints tareas/proyectos |  Resuelto |
+| **5** | Health detallado expuesto |  Resuelto |
+| **6** | SECRET_KEY por defecto |  Resuelto |
+| **7** | Navegación por rol |  Resuelto |
 | **8** | WebSocket sin eventos | ⏳ Parcial |
-| **9** | Orden de rutas estancias | ✅ Correcto |
-| **10** | Invitación por token | ✅ Revisado |
-| **11** | Endpoints aceptar/rechazar | 📝 Recomendación |
+| **9** | Orden de rutas estancias |  Correcto |
+| **10** | Invitación por token |  Revisado |
+| **11** | Endpoints aceptar/rechazar |  Recomendación |
 
 ### Tipos de Errores
 
@@ -394,7 +394,7 @@ Body: { "accion": "aceptar" | "rechazar" | "on_hold" }
 
 ---
 
-## 🔄 Flujos y Roles de Estancias
+##  Flujos y Roles de Estancias
 
 > **Documento fuente**: `ROLES_ESTANCIAS_Y_FLUJOS.md` (DOC-ROL-010)
 
@@ -429,7 +429,7 @@ El backend expone `POST /api/v1/tareas/rollover-dia`:
 
 ---
 
-## 🔑 Configuración de Firebase (SHA-1)
+##  Configuración de Firebase (SHA-1)
 
 > **Documento fuente**: `SHA1_ENCONTRADO.md`
 
@@ -458,7 +458,7 @@ SHA-256: 2D:9A:90:A1:17:DD:BD:19:D3:9D:78:B3:0F:BB:17:9F:DC:CC:BD:84:DA:8A:39:2F
 
 ---
 
-## 🚀 Inicio Rápido
+##  Inicio Rápido
 
 ### Requisitos
 
@@ -505,7 +505,7 @@ HEALTH_DETAILED_KEY=tu-clave-para-health
 
 ---
 
-## 📚 Control Documental GxP
+##  Control Documental GxP
 
 > **Documento índice**: `00_INDICE_DOCUMENTACION_GXP.md` (DOC-INDICE-001)
 
@@ -594,22 +594,7 @@ Este proyecto sigue el marco **GxP (Good Practice)** para asegurar:
 - **Estado**: Vigente, Borrador, Obsoleto, Reservado
 - **Cambios sustanciales**: Deben reflejarse en la versión y en el historial del documento afectado
 
----
 
-## 📞 Soporte
-
-Para reportar problemas o sugerencias:
-
-1. **Revisar documentación**: Este README y los archivos en `/Markdown`
-2. **Verificar versión**: Asegurar que se usa la última versión de la app
-3. **Documentar el problema**: Incluir capturas de pantalla si es posible
-4. **Consultar índice GxP**: `00_INDICE_DOCUMENTACION_GXP.md` para referencias cruzadas
-
-### Contacto
-
-- **Desarrollo Backend**: Consultar `BACKEND_ARCHITECTURE_BOCETO.md`
-- **Desarrollo Móvil**: Consultar `MOBILE_ARCHITECTURE_INSTRUCCIONES.md`
-- **QA/Testing**: Consultar `QA_REPORT_INSTRUCCIONES.md`
 
 ---
 
