@@ -13,23 +13,34 @@ class TeamRepository {
         .toList();
   }
 
-  Future<List<UserModel>> getAreaMembers(int areaId) async {
+  Future<UserModel> getUserDetail(String userId) async {
+    final response = await _api.get(ApiEndpoints.userDetail(userId));
+    return UserModel.fromJson(response.data as Map<String, dynamic>);
+  }
+
+  Future<List<UserModel>> getAreaMembers(String areaId) async {
     final response = await _api.get(ApiEndpoints.areaMembers(areaId));
-    return (response.data as List)
+    final results  = response.data as List? ?? [];
+    return results
         .map((e) => UserModel.fromJson(e as Map<String, dynamic>))
         .toList();
   }
 
-  Future<String> generateInviteLink({
-    required String email,
+  /// Genera invitación. Retorna el token plano para compartir.
+  Future<Map<String, dynamic>> generateInvite({
+    required String areaId,
     required String role,
-    int? areaId,
   }) async {
-    final response = await _api.post(ApiEndpoints.inviteSend, data: {
-      'email': email,
-      'role':  role,
-      if (areaId != null) 'area': areaId,
+    final response = await _api.post(ApiEndpoints.inviteUser, data: {
+      'area': areaId,
+      'role': role,
     });
-    return response.data['link'] as String;
+    // Retorna: { token, expires_at, role, area_id }
+    return response.data as Map<String, dynamic>;
+  }
+
+  Future<UserModel> updateUser(String userId, Map<String, dynamic> data) async {
+    final response = await _api.patch(ApiEndpoints.userDetail(userId), data: data);
+    return UserModel.fromJson(response.data as Map<String, dynamic>);
   }
 }

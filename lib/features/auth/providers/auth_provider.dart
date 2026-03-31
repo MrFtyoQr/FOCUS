@@ -76,38 +76,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
-  Future<void> register({
-    required String email,
-    required String firstName,
-    required String lastName,
-    required String password,
-  }) async {
-    state = const AuthState(status: AuthStatus.loading);
-    try {
-      final user = await _repo.register(
-        email: email,
-        firstName: firstName,
-        lastName: lastName,
-        password: password,
-      );
-      state = AuthState(status: AuthStatus.authenticated, user: user);
-    } on DioException catch (e) {
-      final detail = e.response?.data;
-      String msg = 'Error al registrarse';
-      if (detail is Map && detail['detail'] != null) {
-        msg = detail['detail'].toString();
-      } else if (e.message != null) {
-        msg = e.message!;
-      }
-      state = AuthState(status: AuthStatus.unauthenticated, error: msg);
-    } catch (e) {
-      state = AuthState(
-        status: AuthStatus.unauthenticated,
-        error: e.toString().replaceFirst('Exception: ', ''),
-      );
-    }
-  }
-
   Future<void> logout() async {
     await _repo.logout();
     state = const AuthState(status: AuthStatus.unauthenticated);

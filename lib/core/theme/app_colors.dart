@@ -27,8 +27,9 @@ class AppColors {
   static const blue     = Color(0xFF378ADD);
   static const blueDark = Color(0xFF185FA5);
 
-  static const red   = Color(0xFFE24B4A);
-  static const green = Color(0xFF1D9E75);
+  static const red    = Color(0xFFE24B4A);
+  static const green  = Color(0xFF1D9E75);
+  static const yellow = amber;
 
   // Estados de actividad
   static Color statusColor(String status) {

@@ -9,6 +9,6 @@ final teamMembersProvider = FutureProvider<List<UserModel>>((ref) {
 });
 
 final areaMembersProvider =
-    FutureProvider.family<List<UserModel>, int>((ref, areaId) {
+    FutureProvider.family<List<UserModel>, String>((ref, areaId) {
   return ref.read(teamRepositoryProvider).getAreaMembers(areaId);
 });

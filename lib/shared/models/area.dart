@@ -1,27 +1,24 @@
 class AreaModel {
-  final int     id;
+  final String  id;
   final String  name;
   final String  description;
-  final int     adminId;
-  final String  adminName;
-  final int     membersCount;
+  final String  createdBy;
+  final DateTime createdAt;
 
   const AreaModel({
     required this.id,
     required this.name,
     required this.description,
-    required this.adminId,
-    required this.adminName,
-    required this.membersCount,
+    required this.createdBy,
+    required this.createdAt,
   });
 
   factory AreaModel.fromJson(Map<String, dynamic> json) => AreaModel(
-    id:           json['id'] as int,
-    name:         (json['name'] ?? json['nombre'] ?? '') as String,
-    description:  (json['description'] ?? json['descripcion'] ?? '') as String,
-    adminId:      (json['admin'] ?? json['admin_id'] ?? 0) as int,
-    adminName:    (json['admin_name'] ?? '') as String,
-    membersCount: (json['members_count'] ?? 0) as int,
+    id:          json['id'] as String,
+    name:        (json['name'] ?? '') as String,
+    description: (json['description'] ?? '') as String,
+    createdBy:   (json['created_by'] ?? '') as String,
+    createdAt:   DateTime.parse(json['created_at'] as String),
   );
 
   Map<String, dynamic> toJson() => {

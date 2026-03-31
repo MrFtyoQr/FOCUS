@@ -7,7 +7,7 @@ import '../../../core/widgets/empty_state.dart';
 import '../../../core/theme/app_colors.dart';
 
 class ProjectDetailScreen extends ConsumerWidget {
-  final int id;
+  final String id;
   const ProjectDetailScreen({super.key, required this.id});
 
   @override

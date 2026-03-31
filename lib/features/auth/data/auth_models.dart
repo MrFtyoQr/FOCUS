@@ -13,13 +13,15 @@ class LoginRequest {
   };
 }
 
-class RegisterRequest {
+class InviteAcceptRequest {
+  final String token;
   final String email;
   final String firstName;
   final String lastName;
   final String password;
 
-  const RegisterRequest({
+  const InviteAcceptRequest({
+    required this.token,
     required this.email,
     required this.firstName,
     required this.lastName,
@@ -27,30 +29,8 @@ class RegisterRequest {
   });
 
   Map<String, dynamic> toJson() => {
-    'email':      email,
-    'first_name': firstName,
-    'last_name':  lastName,
-    'nombre':     firstName,
-    'apellido':   lastName,
-    'password':   password,
-  };
-}
-
-class InviteAcceptRequest {
-  final String token;
-  final String firstName;
-  final String lastName;
-  final String password;
-
-  const InviteAcceptRequest({
-    required this.token,
-    required this.firstName,
-    required this.lastName,
-    required this.password,
-  });
-
-  Map<String, dynamic> toJson() => {
     'token':      token,
+    'email':      email,
     'first_name': firstName,
     'last_name':  lastName,
     'password':   password,

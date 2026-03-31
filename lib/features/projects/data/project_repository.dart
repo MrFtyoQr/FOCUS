@@ -14,36 +14,47 @@ class ProjectRepository {
         .toList();
   }
 
-  Future<ProjectModel> getProject(int id) async {
+  Future<ProjectModel> getProject(String id) async {
     final response = await _api.get(ApiEndpoints.projectDetail(id));
     return ProjectModel.fromJson(response.data as Map<String, dynamic>);
   }
 
-  Future<List<ActivityModel>> getProjectActivities(int id) async {
-    final response = await _api.get(
-      ApiEndpoints.activities,
-      params: {'project_id': id},
-    );
-    final results = response.data['results'] as List? ?? response.data as List;
+  Future<List<ActivityModel>> getProjectActivities(String id) async {
+    final response = await _api.get(ApiEndpoints.projectActivities(id));
+    final results  = response.data['results'] as List? ?? response.data as List;
     return results
         .map((e) => ActivityModel.fromJson(e as Map<String, dynamic>))
         .toList();
   }
 
+  Future<Map<String, dynamic>> getProjectProgress(String id) async {
+    final response = await _api.get(ApiEndpoints.projectProgress(id));
+    return response.data as Map<String, dynamic>;
+  }
+
   Future<ProjectModel> createProject({
     required String name,
+    String? areaId,
     String? description,
-    String color = '#7F77DD',
+    String status = 'active',
+    String? targetDate,
   }) async {
     final response = await _api.post(ApiEndpoints.projects, data: {
-      'name': name,
-      if (description != null) 'description': description,
-      'color': color,
+      'name':   name,
+      'status': status,
+      if (areaId      != null) 'area':         areaId,
+      if (description != null) 'description':  description,
+      if (targetDate  != null) 'target_date':  targetDate,
     });
     return ProjectModel.fromJson(response.data as Map<String, dynamic>);
   }
 
-  Future<void> deleteProject(int id) async {
+  Future<ProjectModel> updateProject(String id, Map<String, dynamic> data) async {
+    final response = await _api.patch(ApiEndpoints.projectDetail(id), data: data);
+    return ProjectModel.fromJson(response.data as Map<String, dynamic>);
+  }
+
+  Future<void> deleteProject(String id) async {
     await _api.delete(ApiEndpoints.projectDetail(id));
   }
 }

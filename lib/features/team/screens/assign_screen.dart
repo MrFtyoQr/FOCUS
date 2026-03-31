@@ -5,7 +5,7 @@ import '../providers/team_provider.dart';
 import '../../dashboard/providers/dashboard_provider.dart';
 
 class AssignScreen extends ConsumerStatefulWidget {
-  final int activityId;
+  final String activityId;
   const AssignScreen({super.key, required this.activityId});
 
   @override
@@ -13,7 +13,7 @@ class AssignScreen extends ConsumerStatefulWidget {
 }
 
 class _AssignScreenState extends ConsumerState<AssignScreen> {
-  int? _selectedUserId;
+  String? _selectedUserId;
 
   @override
   Widget build(BuildContext context) {
@@ -40,10 +40,10 @@ class _AssignScreenState extends ConsumerState<AssignScreen> {
                   final m = members[i];
                   final selected = _selectedUserId == m.id;
                   return ListTile(
-                    leading: Radio<int>(
+                    leading: Radio<String>(
                       value: m.id,
                       // ignore: deprecated_member_use
-                      groupValue: _selectedUserId ?? -1,
+                      groupValue: _selectedUserId ?? '',
                       // ignore: deprecated_member_use
                       onChanged: (v) => setState(() => _selectedUserId = v),
                     ),

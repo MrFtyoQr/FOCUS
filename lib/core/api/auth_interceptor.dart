@@ -18,7 +18,7 @@ class AuthInterceptor extends Interceptor {
     const publicPaths = [
       ApiEndpoints.login,
       ApiEndpoints.refresh,
-      ApiEndpoints.inviteAccept,
+      ApiEndpoints.acceptInvite,
     ];
     if (publicPaths.any((p) => options.path.contains(p))) {
       return handler.next(options);

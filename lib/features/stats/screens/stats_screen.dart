@@ -5,7 +5,6 @@ import '../../auth/providers/auth_provider.dart';
 import '../../../shared/enums/user_role.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
-
 class StatsScreen extends ConsumerWidget {
   const StatsScreen({super.key});
 
@@ -65,7 +64,7 @@ class _WorkerStats extends ConsumerWidget {
               _KpiCardGrid(items: [
                 _KpiItem('Total', stats['total'], AppColors.purple),
                 _KpiItem('Completadas', stats['completed'], AppColors.green),
-                _KpiItem('Pendientes', stats['pending'], AppColors.yellow),
+                _KpiItem('Pendientes', stats['pending'], AppColors.amber),
                 _KpiItem('Vencidas', stats['overdue'], AppColors.red),
               ]),
               const SizedBox(height: 24),
@@ -91,7 +90,9 @@ class _AdminAreaStats extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final areaAsync   = ref.watch(areaStatsProvider);
+    final user        = ref.watch(currentUserProvider);
+    final areaId      = user?.areaId ?? '';
+    final areaAsync   = ref.watch(areaStatsProvider(areaId));
     final workerAsync = ref.watch(workerStatsProvider);
 
     return Scaffold(
@@ -131,7 +132,7 @@ class _AdminAreaStats extends ConsumerWidget {
                   _KpiCardGrid(items: [
                     _KpiItem('Total', area['total'], AppColors.purple),
                     _KpiItem('Completadas', area['completed'], AppColors.green),
-                    _KpiItem('Pendientes', area['pending'], AppColors.yellow),
+                    _KpiItem('Pendientes', area['pending'], AppColors.amber),
                     _KpiItem('Vencidas', area['overdue'], AppColors.red),
                   ]),
                 ],
@@ -255,7 +256,7 @@ class _RingKpi extends StatelessWidget {
     final color = rate >= 80
         ? AppColors.green
         : rate >= 60
-            ? AppColors.yellow
+            ? AppColors.amber
             : AppColors.red;
 
     return Column(
@@ -361,7 +362,7 @@ class _WorkerBar extends StatelessWidget {
     final rate  = (worker['completion_rate'] as num).toDouble();
     final color = rate >= 80
         ? AppColors.green
-        : rate >= 60 ? AppColors.yellow : AppColors.red;
+        : rate >= 60 ? AppColors.amber : AppColors.red;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -451,7 +452,7 @@ class _AreaCard extends StatelessWidget {
     final rate  = (area['completion_rate'] as num).toDouble();
     final color = rate >= 80
         ? AppColors.green
-        : rate >= 60 ? AppColors.yellow : AppColors.red;
+        : rate >= 60 ? AppColors.amber : AppColors.red;
 
     return GestureDetector(
       onTap: onTap,
@@ -536,10 +537,7 @@ class _AreaDetailSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final rate  = (area['completion_rate'] as num).toDouble();
-    final color = rate >= 80
-        ? AppColors.green
-        : rate >= 60 ? AppColors.yellow : AppColors.red;
+    final rate = (area['completion_rate'] as num).toDouble();
 
     return DraggableScrollableSheet(
       initialChildSize: 0.55,

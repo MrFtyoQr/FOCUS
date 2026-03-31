@@ -18,7 +18,7 @@ class _CaptureScreenState extends ConsumerState<CaptureScreen> {
   final _titleController = TextEditingController();
   final _descController  = TextEditingController();
   ActivityStatus _status = ActivityStatus.bandeja;
-  int? _projectId;
+  String? _projectId;
   DateTime? _targetDate;
 
   @override
@@ -36,7 +36,7 @@ class _CaptureScreenState extends ConsumerState<CaptureScreen> {
       title:       _titleController.text.trim(),
       description: _descController.text.trim().isEmpty
           ? null : _descController.text.trim(),
-      status:      _status.name,
+      status:      _status.apiValue,
       projectId:   _projectId,
       targetDate:  _targetDate,
     );
@@ -133,7 +133,7 @@ class _CaptureScreenState extends ConsumerState<CaptureScreen> {
                       error: (_, __) => const SizedBox.shrink(),
                       data: (projects) => projects.isEmpty
                           ? const SizedBox.shrink()
-                          : DropdownButtonFormField<int?>(
+                          : DropdownButtonFormField<String?>(
                               initialValue: _projectId,
                               decoration: const InputDecoration(
                                 labelText: 'Proyecto (opcional)',
@@ -143,10 +143,10 @@ class _CaptureScreenState extends ConsumerState<CaptureScreen> {
                                         BorderRadius.all(Radius.circular(12))),
                               ),
                               items: [
-                                const DropdownMenuItem<int?>(
+                                const DropdownMenuItem<String?>(
                                     value: null,
                                     child: Text('Sin proyecto')),
-                                ...projects.map((p) => DropdownMenuItem<int?>(
+                                ...projects.map((p) => DropdownMenuItem<String?>(
                                       value: p.id,
                                       child: Text(p.name),
                                     )),

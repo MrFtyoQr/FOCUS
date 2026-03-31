@@ -114,7 +114,7 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: 'activity/:id',
                 builder: (_, state) => ActivityDetailScreen(
-                  id: int.parse(state.pathParameters['id']!),
+                  id: state.pathParameters['id']!,
                 ),
               ),
             ],
@@ -130,7 +130,7 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: ':id',
                 builder: (_, state) => ProjectDetailScreen(
-                  id: int.parse(state.pathParameters['id']!),
+                  id: state.pathParameters['id']!,
                 ),
               ),
             ],
@@ -146,8 +146,7 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: 'assign/:activityId',
                 builder: (_, state) => AssignScreen(
-                  activityId:
-                      int.parse(state.pathParameters['activityId']!),
+                  activityId: state.pathParameters['activityId']!,
                 ),
               ),
             ],

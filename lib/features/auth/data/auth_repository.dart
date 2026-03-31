@@ -18,47 +18,24 @@ class AuthRepository {
       access:  response.data['access']  as String,
       refresh: response.data['refresh'] as String,
     );
-    return getMe();
+    return UserModel.fromJson(response.data['user'] as Map<String, dynamic>);
   }
 
-  Future<UserModel> register({
+  Future<UserModel> acceptInvitation({
+    required String token,
     required String email,
     required String firstName,
     required String lastName,
     required String password,
   }) async {
-    final response = await _api.post('/auth/register/', data: {
+    final response = await _api.post(ApiEndpoints.acceptInvite, data: {
+      'token':      token,
       'email':      email,
       'first_name': firstName,
       'last_name':  lastName,
-      'nombre':     firstName,
-      'apellido':   lastName,
       'password':   password,
     });
-    await SecureStorage.instance.saveTokens(
-      access:  response.data['access']  as String,
-      refresh: response.data['refresh'] as String,
-    );
-    return getMe();
-  }
-
-  Future<UserModel> acceptInvitation({
-    required String token,
-    required String firstName,
-    required String lastName,
-    required String password,
-  }) async {
-    final response = await _api.post(ApiEndpoints.inviteAccept, data: {
-      'token':      token,
-      'first_name': firstName,
-      'last_name':  lastName,
-      'password':   password,
-    });
-    await SecureStorage.instance.saveTokens(
-      access:  response.data['access']  as String,
-      refresh: response.data['refresh'] as String,
-    );
-    return UserModel.fromJson(response.data['user'] as Map<String, dynamic>);
+    return UserModel.fromJson(response.data as Map<String, dynamic>);
   }
 
   Future<UserModel> getMe() async {
@@ -79,8 +56,30 @@ class AuthRepository {
     }
   }
 
-  Future<Map<String, dynamic>> validateInviteToken(String token) async {
-    final response = await _api.get(ApiEndpoints.inviteValidate(token));
-    return response.data as Map<String, dynamic>;
+  Future<void> enableBiometric(String deviceId) async {
+    await _api.post(ApiEndpoints.biometricEnable, data: {'device_id': deviceId});
+  }
+
+  Future<void> disableBiometric() async {
+    await _api.post(ApiEndpoints.biometricDisable);
+  }
+
+  Future<UserModel> biometricLogin({
+    required String deviceId,
+    required String refresh,
+  }) async {
+    final response = await _api.post(ApiEndpoints.biometricLogin, data: {
+      'device_id': deviceId,
+      'refresh':   refresh,
+    });
+    await SecureStorage.instance.saveTokens(
+      access:  response.data['access']  as String,
+      refresh: response.data['refresh'] as String,
+    );
+    return UserModel.fromJson(response.data['user'] as Map<String, dynamic>);
+  }
+
+  Future<void> completeOnboarding() async {
+    await _api.post(ApiEndpoints.onboardingComplete);
   }
 }

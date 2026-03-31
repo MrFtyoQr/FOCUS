@@ -7,7 +7,7 @@ import '../../../shared/enums/activity_status.dart';
 import '../../../core/theme/app_colors.dart';
 
 class ActivityDetailScreen extends ConsumerWidget {
-  final int id;
+  final String id;
   const ActivityDetailScreen({super.key, required this.id});
 
   @override

@@ -8,7 +8,6 @@ import '../../shared/models/activity.dart';
 import '../../shared/models/project.dart';
 import '../../shared/models/user.dart';
 import '../../shared/enums/activity_status.dart';
-import '../../shared/enums/user_role.dart';
 import '../../core/storage/secure_storage.dart';
 import '../../core/storage/local_prefs.dart';
 import 'mock_data.dart';
@@ -34,17 +33,6 @@ class MockAuthRepository extends AuthRepository {
   @override
   Future<UserModel> login({required String email, required String password}) async {
     await Future.delayed(const Duration(milliseconds: 800));
-    // Acepta cualquier credencial en modo mock
-    await _seedSession();
-    return MockData.currentUser;
-  }
-
-  @override
-  Future<UserModel> register({
-    required String email, required String firstName,
-    required String lastName, required String password,
-  }) async {
-    await Future.delayed(const Duration(milliseconds: 800));
     await _seedSession();
     return MockData.currentUser;
   }
@@ -59,31 +47,21 @@ class MockAuthRepository extends AuthRepository {
   }
 
   @override
-  Future<Map<String, dynamic>> validateInviteToken(String token) =>
-      _fake({
-        'valid': true,
-        'email': 'invitado@treetech.mx',
-        'role': 'trabajador',
-        'area_id': 1,
-        'area_name': 'Desarrollo',
-        'invited_by': 'Carlos Mendoza',
-      });
-
-  @override
   Future<UserModel> acceptInvitation({
     required String token,
+    required String email,
     required String firstName,
     required String lastName,
     required String password,
   }) async {
     await Future.delayed(const Duration(milliseconds: 800));
     await _seedSession();
-    // Retorna un usuario con el nombre que el invitado eligió
     return UserModel(
-      id: 99, email: 'invitado@treetech.mx',
+      id: 'uuid-user-99', email: email,
       firstName: firstName, lastName: lastName,
-      role: UserRole.trabajador,
-      areaId: 1, areaName: 'Desarrollo',
+      role: MockData.currentUser.role,
+      areaId: MockData.currentUser.areaId,
+      areaName: MockData.currentUser.areaName,
       onboardingCompleted: true,
     );
   }
@@ -91,25 +69,25 @@ class MockAuthRepository extends AuthRepository {
 
 // ── Activities ────────────────────────────────────────────────────────────────
 class MockActivityRepository extends ActivityRepository {
-  // Lista mutable para que createActivity sea visible en el tablero
   final _activities = List<ActivityModel>.from(MockData.activities);
-  int _nextId = 100;
+  int _nextIdx = 100;
 
   @override
-  Future<List<ActivityModel>> getActivities({String? status, int? projectId}) async {
+  Future<List<ActivityModel>> getActivities({
+    String? status,
+    String? projectId,
+    String? areaId,
+  }) async {
     await Future.delayed(const Duration(milliseconds: 400));
     var list = _activities.toList();
-    if (status != null) {
-      list = list.where((a) => a.status.name == status).toList();
-    }
-    if (projectId != null) {
-      list = list.where((a) => a.projectId == projectId).toList();
-    }
+    if (status    != null) list = list.where((a) => a.status.apiValue == status).toList();
+    if (projectId != null) list = list.where((a) => a.projectId == projectId).toList();
+    if (areaId    != null) list = list.where((a) => a.areaId == areaId).toList();
     return list;
   }
 
   @override
-  Future<ActivityModel> getActivity(int id) async {
+  Future<ActivityModel> getActivity(String id) async {
     await Future.delayed(const Duration(milliseconds: 300));
     return _activities.firstWhere((a) => a.id == id);
   }
@@ -119,13 +97,15 @@ class MockActivityRepository extends ActivityRepository {
     required String title,
     String? description,
     required String status,
-    int? projectId,
+    String? projectId,
+    String? areaId,
+    String? assignedTo,
     DateTime? targetDate,
   }) async {
     await Future.delayed(const Duration(milliseconds: 600));
     final now = DateTime.now();
     final activity = ActivityModel(
-      id: _nextId++,
+      id: 'uuid-act-$_nextIdx',
       title: title,
       description: description ?? '',
       status: ActivityStatus.fromString(status),
@@ -135,70 +115,62 @@ class MockActivityRepository extends ActivityRepository {
       projectName: projectId != null
           ? MockData.projects.firstWhere((p) => p.id == projectId).name
           : null,
+      areaId: areaId ?? MockData.currentUser.areaId,
       targetDate: targetDate,
       createdAt: now,
       updatedAt: now,
     );
+    _nextIdx++;
     _activities.add(activity);
     return activity;
   }
 
   @override
-  Future<ActivityModel> moveActivity(int id, String status) async {
+  Future<ActivityModel> moveActivity(String id, String status) async {
     await Future.delayed(const Duration(milliseconds: 400));
     final idx = _activities.indexWhere((a) => a.id == id);
+    final src = _activities[idx];
     final updated = ActivityModel(
-      id: _activities[idx].id,
-      title: _activities[idx].title,
-      description: _activities[idx].description,
+      id: src.id, title: src.title, description: src.description,
       status: ActivityStatus.fromString(status),
-      ownerId: _activities[idx].ownerId,
-      ownerName: _activities[idx].ownerName,
-      assignedToId: _activities[idx].assignedToId,
-      assignedToName: _activities[idx].assignedToName,
-      assignedById: _activities[idx].assignedById,
-      assignedByName: _activities[idx].assignedByName,
-      projectId: _activities[idx].projectId,
-      projectName: _activities[idx].projectName,
-      targetDate: _activities[idx].targetDate,
-      createdAt: _activities[idx].createdAt,
-      updatedAt: DateTime.now(),
+      ownerId: src.ownerId, ownerName: src.ownerName,
+      assignedToId: src.assignedToId, assignedToName: src.assignedToName,
+      assignedById: src.assignedById, assignedByName: src.assignedByName,
+      projectId: src.projectId, projectName: src.projectName,
+      areaId: src.areaId, areaName: src.areaName,
+      targetDate: src.targetDate,
+      createdAt: src.createdAt, updatedAt: DateTime.now(),
     );
     _activities[idx] = updated;
     return updated;
   }
 
   @override
-  Future<ActivityModel> completeActivity(int id) => moveActivity(id, 'completada');
+  Future<ActivityModel> completeActivity(String id) => moveActivity(id, 'completed');
 
   @override
-  Future<ActivityModel> assignActivity(int id, int assignedToId) async {
+  Future<ActivityModel> assignActivity(String id, String assignedToId) async {
     await Future.delayed(const Duration(milliseconds: 400));
     final member = MockData.teamMembers.firstWhere((m) => m.id == assignedToId);
     final idx    = _activities.indexWhere((a) => a.id == id);
+    final src    = _activities[idx];
     final updated = ActivityModel(
-      id: _activities[idx].id,
-      title: _activities[idx].title,
-      description: _activities[idx].description,
-      status: _activities[idx].status,
-      ownerId: _activities[idx].ownerId,
-      ownerName: _activities[idx].ownerName,
-      assignedToId: assignedToId,
-      assignedToName: member.fullName,
-      assignedById: MockData.currentUser.id,
-      assignedByName: MockData.currentUser.fullName,
-      projectId: _activities[idx].projectId,
-      projectName: _activities[idx].projectName,
-      targetDate: _activities[idx].targetDate,
-      createdAt: _activities[idx].createdAt,
-      updatedAt: DateTime.now(),
+      id: src.id, title: src.title, description: src.description,
+      status: src.status,
+      ownerId: src.ownerId, ownerName: src.ownerName,
+      assignedToId: assignedToId, assignedToName: member.fullName,
+      assignedById: MockData.currentUser.id, assignedByName: MockData.currentUser.fullName,
+      projectId: src.projectId, projectName: src.projectName,
+      areaId: src.areaId, areaName: src.areaName,
+      targetDate: src.targetDate,
+      createdAt: src.createdAt, updatedAt: DateTime.now(),
     );
     _activities[idx] = updated;
     return updated;
   }
 
   @override
-  Future<void> deleteActivity(int id) async {
+  Future<void> deleteActivity(String id) async {
     await Future.delayed(const Duration(milliseconds: 300));
     _activities.removeWhere((a) => a.id == id);
   }
@@ -212,24 +184,41 @@ class MockProjectRepository extends ProjectRepository {
   Future<List<ProjectModel>> getProjects() => _fake(List.from(_projects));
 
   @override
-  Future<ProjectModel> getProject(int id) =>
+  Future<ProjectModel> getProject(String id) =>
       _fake(_projects.firstWhere((p) => p.id == id));
 
   @override
-  Future<List<ActivityModel>> getProjectActivities(int id) async {
+  Future<List<ActivityModel>> getProjectActivities(String id) async {
     await Future.delayed(const Duration(milliseconds: 400));
     return MockData.activities.where((a) => a.projectId == id).toList();
   }
 
   @override
-  Future<ProjectModel> createProject({required String name, String? description, String color = '#7F77DD'}) async {
+  Future<Map<String, dynamic>> getProjectProgress(String id) async {
+    await Future.delayed(const Duration(milliseconds: 300));
+    final acts = MockData.activities.where((a) => a.projectId == id).toList();
+    final completed = acts.where((a) => a.isCompleted).length;
+    return {
+      'total': acts.length, 'completed': completed,
+      'pending': acts.length - completed, 'in_progress': 0,
+      'completion_percentage': acts.isEmpty ? 0.0 : completed / acts.length * 100,
+    };
+  }
+
+  @override
+  Future<ProjectModel> createProject({
+    required String name,
+    String? areaId,
+    String? description,
+    String status = 'active',
+    String? targetDate,
+  }) async {
     await Future.delayed(const Duration(milliseconds: 600));
     final p = ProjectModel(
-      id: _projects.length + 10,
-      name: name, description: description ?? '', color: color,
-      ownerId: MockData.currentUser.id, ownerName: MockData.currentUser.fullName,
-      areaId: MockData.currentUser.areaId, areaName: MockData.currentUser.areaName,
-      totalActivities: 0, completedActivities: 0,
+      id: 'uuid-proj-${_projects.length + 10}',
+      name: name, description: description ?? '',
+      status: status, areaId: areaId,
+      areaName: MockData.currentUser.areaName,
       createdAt: DateTime.now(),
     );
     _projects.add(p);
@@ -237,7 +226,7 @@ class MockProjectRepository extends ProjectRepository {
   }
 
   @override
-  Future<void> deleteProject(int id) async {
+  Future<void> deleteProject(String id) async {
     await Future.delayed(const Duration(milliseconds: 300));
     _projects.removeWhere((p) => p.id == id);
   }
@@ -249,26 +238,45 @@ class MockTeamRepository extends TeamRepository {
   Future<List<UserModel>> getTeamMembers() => _fake(MockData.teamMembers);
 
   @override
-  Future<List<UserModel>> getAreaMembers(int areaId) =>
+  Future<List<UserModel>> getAreaMembers(String areaId) =>
       _fake(MockData.teamMembers.where((m) => m.areaId == areaId).toList());
 
   @override
-  Future<String> generateInviteLink({required String email, required String role, int? areaId}) =>
-      _fake('https://hiperapp.treetech.mx/invite/mock-token-abc123');
+  Future<Map<String, dynamic>> generateInvite({
+    required String areaId,
+    required String role,
+  }) => _fake({
+    'token': 'mock-invite-token-abc123',
+    'expires_at': DateTime.now().add(const Duration(hours: 24)).toIso8601String(),
+    'role': role,
+    'area_id': areaId,
+  });
 }
 
 // ── Stats ─────────────────────────────────────────────────────────────────────
 class MockStatsRepository extends StatsRepository {
   @override
-  Future<Map<String, dynamic>> getMyStats()           => _fake(MockData.myStats);
+  Future<Map<String, dynamic>> getPersonalStats() => _fake(MockData.myStats);
+
   @override
-  Future<Map<String, dynamic>> getAreaStats()         => _fake(MockData.areaStats);
-  @override
-  Future<Map<String, dynamic>> getAreaDetailStats(int areaId) => _fake(MockData.areaStats);
+  Future<Map<String, dynamic>> getAreaStats(String areaId) =>
+      _fake(MockData.areaStats);
+
   @override
   Future<List<Map<String, dynamic>>> getWorkerStats() =>
       _fake(MockData.workerStats);
+
   @override
   Future<List<Map<String, dynamic>>> getAllAreasStats() =>
       _fake(MockData.allAreasStats);
+
+  @override
+  Future<Map<String, dynamic>> getDrilldown({
+    String? areaId, String? projectId, String? userId,
+    String? from, String? to,
+  }) => _fake({
+    'filters': {'area': areaId, 'project': projectId, 'user': userId},
+    'summary': {'total': 74, 'completed': 58, 'completion_rate': 78.4},
+    'by_project': [], 'by_user': MockData.workerStats, 'by_area': MockData.allAreasStats,
+  });
 }

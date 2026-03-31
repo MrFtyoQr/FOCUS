@@ -25,33 +25,16 @@ class InviteScreen extends ConsumerStatefulWidget {
 }
 
 class _InviteScreenState extends ConsumerState<InviteScreen> {
-  final _formKey                  = GlobalKey<FormState>();
-  final _firstNameController      = TextEditingController();
-  final _lastNameController       = TextEditingController();
-  final _passwordController       = TextEditingController();
+  final _formKey                   = GlobalKey<FormState>();
+  final _emailController           = TextEditingController();
+  final _firstNameController       = TextEditingController();
+  final _lastNameController        = TextEditingController();
+  final _passwordController        = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   bool _obscurePassword = true;
   bool _obscureConfirm  = true;
-  bool _isLoading      = false;
+  bool _isLoading       = false;
   String? _errorMsg;
-  Map<String, dynamic>? _inviteInfo;
-  bool _loadingToken   = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _validateToken();
-  }
-
-  Future<void> _validateToken() async {
-    try {
-      final repo = ref.read(authRepositoryProvider);
-      final info = await repo.validateInviteToken(widget.token);
-      setState(() { _inviteInfo = info; _loadingToken = false; });
-    } catch (_) {
-      setState(() { _errorMsg = 'El enlace de invitación no es válido o ha expirado.'; _loadingToken = false; });
-    }
-  }
 
   Future<void> _handleAccept() async {
     if (!_formKey.currentState!.validate()) return;
@@ -60,11 +43,12 @@ class _InviteScreenState extends ConsumerState<InviteScreen> {
       final repo = ref.read(authRepositoryProvider);
       await repo.acceptInvitation(
         token:     widget.token,
+        email:     _emailController.text.trim(),
         firstName: _firstNameController.text.trim(),
         lastName:  _lastNameController.text.trim(),
         password:  _passwordController.text,
       );
-      if (mounted) context.go('/');
+      if (mounted) context.go('/login');
     } catch (e) {
       setState(() {
         _isLoading = false;
@@ -78,43 +62,8 @@ class _InviteScreenState extends ConsumerState<InviteScreen> {
     final theme     = Theme.of(context);
     final isDesktop = Responsive.isDesktop(context);
 
-    if (_loadingToken) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
-    }
-
-    if (_errorMsg != null && _inviteInfo == null) {
-      return Scaffold(
-        body: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(32),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.link_off, size: 64, color: theme.colorScheme.error),
-                const SizedBox(height: 16),
-                Text('Invitación inválida',
-                    style: theme.textTheme.headlineSmall),
-                const SizedBox(height: 8),
-                Text(_errorMsg!,
-                    textAlign: TextAlign.center,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant)),
-                const SizedBox(height: 24),
-                FilledButton(
-                  onPressed: () => context.go('/login'),
-                  child: const Text('Ir al inicio'),
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
-    }
-
     return Scaffold(
-      appBar: AppBar(title: const Text('Aceptar invitación')),
+      appBar: AppBar(title: const Text('Activar cuenta')),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -130,15 +79,26 @@ class _InviteScreenState extends ConsumerState<InviteScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    if (_inviteInfo?['email'] != null) ...[
-                      Text(
-                        'Invitación para: ${_inviteInfo!['email']}',
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant),
-                        textAlign: TextAlign.center,
+                    TextFormField(
+                      controller: _emailController,
+                      keyboardType: TextInputType.emailAddress,
+                      autocorrect: false,
+                      decoration: const InputDecoration(
+                        labelText: 'Correo electrónico',
+                        hintText: 'tu@email.com',
+                        prefixIcon: Icon(Icons.email_outlined),
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.all(Radius.circular(12))),
                       ),
-                      const SizedBox(height: 24),
-                    ],
+                      validator: (v) {
+                        if (v == null || v.trim().isEmpty) return 'Indica tu correo';
+                        if (!v.contains('@') || !v.contains('.')) {
+                          return 'Correo no válido';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 16),
                     TextFormField(
                       controller: _firstNameController,
                       textCapitalization: TextCapitalization.words,
@@ -198,9 +158,7 @@ class _InviteScreenState extends ConsumerState<InviteScreen> {
                       ),
                       validator: (v) {
                         if (v == null || v.isEmpty) return 'Repite la contraseña';
-                        if (v != _passwordController.text) {
-                          return 'No coincide';
-                        }
+                        if (v != _passwordController.text) return 'No coincide';
                         return null;
                       },
                     ),
@@ -245,6 +203,7 @@ class _InviteScreenState extends ConsumerState<InviteScreen> {
 
   @override
   void dispose() {
+    _emailController.dispose();
     _firstNameController.dispose();
     _lastNameController.dispose();
     _passwordController.dispose();

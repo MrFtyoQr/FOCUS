@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import '../../../core/api/api_client.dart';
 import '../../../core/api/api_endpoints.dart';
 import '../../../shared/models/activity.dart';
@@ -7,11 +8,13 @@ class ActivityRepository {
 
   Future<List<ActivityModel>> getActivities({
     String? status,
-    int? projectId,
+    String? projectId,
+    String? areaId,
   }) async {
     final params = <String, dynamic>{};
-    if (status != null)    params['status']     = status;
-    if (projectId != null) params['project_id'] = projectId;
+    if (status    != null) params['status']  = status;
+    if (projectId != null) params['project'] = projectId;
+    if (areaId    != null) params['area']    = areaId;
 
     final response = await _api.get(ApiEndpoints.activities, params: params);
     final results  = response.data['results'] as List? ?? response.data as List;
@@ -20,7 +23,7 @@ class ActivityRepository {
         .toList();
   }
 
-  Future<ActivityModel> getActivity(int id) async {
+  Future<ActivityModel> getActivity(String id) async {
     final response = await _api.get(ApiEndpoints.activityDetail(id));
     return ActivityModel.fromJson(response.data as Map<String, dynamic>);
   }
@@ -29,21 +32,30 @@ class ActivityRepository {
     required String title,
     String? description,
     required String status,
-    int? projectId,
+    String? projectId,
+    String? areaId,
+    String? assignedTo,
     DateTime? targetDate,
   }) async {
     final response = await _api.post(ApiEndpoints.activities, data: {
-      'title': title,
-      if (description != null) 'description': description,
+      'title':  title,
       'status': status,
-      if (projectId != null) 'project': projectId,
-      if (targetDate != null)
-        'target_date': targetDate.toIso8601String().split('T')[0],
+      if (description != null) 'description':  description,
+      if (projectId   != null) 'project':       projectId,
+      if (areaId      != null) 'area':          areaId,
+      if (assignedTo  != null) 'assigned_to':   assignedTo,
+      if (targetDate  != null) 'target_date':
+          targetDate.toIso8601String().split('T')[0],
     });
     return ActivityModel.fromJson(response.data as Map<String, dynamic>);
   }
 
-  Future<ActivityModel> moveActivity(int id, String status) async {
+  Future<ActivityModel> updateActivity(String id, Map<String, dynamic> data) async {
+    final response = await _api.patch(ApiEndpoints.activityDetail(id), data: data);
+    return ActivityModel.fromJson(response.data as Map<String, dynamic>);
+  }
+
+  Future<ActivityModel> moveActivity(String id, String status) async {
     final response = await _api.patch(
       ApiEndpoints.activityMove(id),
       data: {'status': status},
@@ -51,12 +63,12 @@ class ActivityRepository {
     return ActivityModel.fromJson(response.data as Map<String, dynamic>);
   }
 
-  Future<ActivityModel> completeActivity(int id) async {
-    final response = await _api.patch(ApiEndpoints.activityComplete(id));
+  Future<ActivityModel> completeActivity(String id) async {
+    final response = await _api.post(ApiEndpoints.activityComplete(id));
     return ActivityModel.fromJson(response.data as Map<String, dynamic>);
   }
 
-  Future<ActivityModel> assignActivity(int id, int assignedToId) async {
+  Future<ActivityModel> assignActivity(String id, String assignedToId) async {
     final response = await _api.patch(
       ApiEndpoints.activityAssign(id),
       data: {'assigned_to': assignedToId},
@@ -64,7 +76,28 @@ class ActivityRepository {
     return ActivityModel.fromJson(response.data as Map<String, dynamic>);
   }
 
-  Future<void> deleteActivity(int id) async {
+  Future<void> deleteActivity(String id) async {
     await _api.delete(ApiEndpoints.activityDetail(id));
+  }
+
+  Future<List<Map<String, dynamic>>> getAttachments(String id) async {
+    final response = await _api.get(ApiEndpoints.attachments(id));
+    return (response.data as List).cast<Map<String, dynamic>>();
+  }
+
+  Future<void> uploadAttachment(String id, String filePath, String fileName) async {
+    final formData = FormData.fromMap({
+      'file': await MultipartFile.fromFile(filePath, filename: fileName),
+    });
+    await _api.upload(ApiEndpoints.attachments(id), formData);
+  }
+
+  Future<void> deleteAttachment(String actId, String attId) async {
+    await _api.delete(ApiEndpoints.attachmentDelete(actId, attId));
+  }
+
+  Future<List<Map<String, dynamic>>> getLogs(String id) async {
+    final response = await _api.get(ApiEndpoints.activityLogs(id));
+    return (response.data as List).cast<Map<String, dynamic>>();
   }
 }

@@ -14,7 +14,8 @@ class CaptureNotifier extends StateNotifier<AsyncValue<void>> {
     required String title,
     String? description,
     required String status,
-    int? projectId,
+    String? projectId,
+    String? areaId,
     DateTime? targetDate,
   }) async {
     state = const AsyncValue.loading();
@@ -24,6 +25,7 @@ class CaptureNotifier extends StateNotifier<AsyncValue<void>> {
         description: description,
         status:      status,
         projectId:   projectId,
+        areaId:      areaId,
         targetDate:  targetDate,
       );
       _ref.invalidate(dashboardProvider);
