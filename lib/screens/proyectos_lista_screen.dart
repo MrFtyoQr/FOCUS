@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 import '../models/models.dart';
 import '../services/database_service.dart';
+import '../utils/estado_actividad_colors.dart';
+import '../utils/app_snackbar.dart';
+import '../utils/paleta_pasteles.dart';
 import '../utils/responsive.dart';
 import 'detalle_proyecto_screen.dart';
 
@@ -56,7 +59,7 @@ class _ProyectosListaScreenState extends State<ProyectosListaScreen> {
       setState(() => _isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al cargar proyectos: $e')),
+          AppSnackBar.error('Error al cargar proyectos: $e'),
         );
       }
     }
@@ -65,7 +68,8 @@ class _ProyectosListaScreenState extends State<ProyectosListaScreen> {
   Future<void> _mostrarDialogoCrearProyecto() async {
     final nombreController = TextEditingController();
     final descripcionController = TextEditingController();
-    Color? colorSeleccionado = Colors.blue;
+    final brightness = Theme.of(context).brightness;
+    Color? colorSeleccionado = PaletaPasteles.proyectoPredeterminado(brightness);
     
     final resultado = await showDialog<bool>(
       context: context,
@@ -81,6 +85,8 @@ class _ProyectosListaScreenState extends State<ProyectosListaScreen> {
                   decoration: const InputDecoration(
                     labelText: 'Nombre *',
                     prefixIcon: Icon(Icons.folder),
+                    floatingLabelBehavior: FloatingLabelBehavior.auto,
+                    contentPadding: EdgeInsets.symmetric(horizontal: 18, vertical: 16),
                   ),
                   autofocus: true,
                 ),
@@ -90,6 +96,8 @@ class _ProyectosListaScreenState extends State<ProyectosListaScreen> {
                   decoration: const InputDecoration(
                     labelText: 'Descripción',
                     prefixIcon: Icon(Icons.description),
+                    floatingLabelBehavior: FloatingLabelBehavior.auto,
+                    contentPadding: EdgeInsets.symmetric(horizontal: 18, vertical: 16),
                   ),
                   maxLines: 3,
                 ),
@@ -99,43 +107,69 @@ class _ProyectosListaScreenState extends State<ProyectosListaScreen> {
                   style: Theme.of(context).textTheme.titleSmall,
                 ),
                 const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  children: [
-                    Colors.blue,
-                    Colors.green,
-                    Colors.orange,
-                    Colors.purple,
-                    Colors.red,
-                    Colors.teal,
-                    Colors.pink,
-                    Colors.indigo,
-                  ].map((color) {
-                    return GestureDetector(
-                      onTap: () {
-                        setDialogState(() {
-                          colorSeleccionado = color;
-                        });
-                      },
-                      child: Container(
-                        width: 40,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          color: color,
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: colorSeleccionado == color
-                                ? Colors.black
-                                : Colors.transparent,
-                            width: 3,
+                Builder(
+                  builder: (context) {
+                    final colores = PaletaPasteles.coloresProyecto(brightness);
+                    Widget colorDot(Color color) {
+                      final scheme = Theme.of(context).colorScheme;
+                      final checkOnPastel = color.computeLuminance() > 0.55
+                          ? const Color(0xFF2C2C2E)
+                          : Colors.white;
+                      return GestureDetector(
+                        onTap: () {
+                          setDialogState(() {
+                            colorSeleccionado = color;
+                          });
+                        },
+                        child: Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: color,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: colorSeleccionado == color
+                                  ? scheme.onSurface
+                                  : Colors.transparent,
+                              width: 3,
+                            ),
                           ),
+                          child: colorSeleccionado == color
+                              ? Icon(Icons.check, color: checkOnPastel)
+                              : null,
                         ),
-                        child: colorSeleccionado == color
-                            ? const Icon(Icons.check, color: Colors.white)
-                            : null,
-                      ),
+                      );
+                    }
+
+                    final filaSuperior = colores.take(4).toList();
+                    final filaInferior = colores.skip(4).toList();
+
+                    return Column(
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: filaSuperior
+                              .map((color) => Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6),
+                                    child: colorDot(color),
+                                  ))
+                              .toList(),
+                        ),
+                        if (filaInferior.isNotEmpty) ...[
+                          const SizedBox(height: 10),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: filaInferior
+                                .map((color) => Padding(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6),
+                                      child: colorDot(color),
+                                    ))
+                                .toList(),
+                          ),
+                        ],
+                      ],
                     );
-                  }).toList(),
+                  },
                 ),
               ],
             ),
@@ -169,7 +203,9 @@ class _ProyectosListaScreenState extends State<ProyectosListaScreen> {
           descripcion: descripcionController.text.trim().isEmpty
               ? null
               : descripcionController.text.trim(),
-          color: '#${(colorSeleccionado ?? Colors.blue).value.toRadixString(16).substring(2)}',
+          color: PaletaPasteles.colorToHexRgb(
+            colorSeleccionado ?? PaletaPasteles.proyectoPredeterminado(brightness),
+          ),
           createdAt: ahora,
           updatedAt: ahora,
         );
@@ -179,16 +215,13 @@ class _ProyectosListaScreenState extends State<ProyectosListaScreen> {
         
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Proyecto creado exitosamente'),
-              backgroundColor: Colors.green,
-            ),
+            AppSnackBar.exito('Proyecto creado exitosamente'),
           );
         }
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error al crear proyecto: $e')),
+            AppSnackBar.error('Error al crear proyecto: $e'),
           );
         }
       }
@@ -279,14 +312,10 @@ class _ProyectosListaScreenState extends State<ProyectosListaScreen> {
     final total = actividades.length;
     final completadas = contador[EstadoActividad.completada] ?? 0;
     
-    Color proyectoColor = Colors.blue;
-    if (proyecto.color != null && proyecto.color!.isNotEmpty) {
-      try {
-        proyectoColor = Color(int.parse(proyecto.color!.replaceFirst('#', '0xFF')));
-      } catch (e) {
-        proyectoColor = Colors.blue;
-      }
-    }
+    final proyectoColor = PaletaPasteles.proyectoColorByMode(
+      proyecto.color,
+      Theme.of(context).brightness,
+    );
 
     return Card(
       child: InkWell(
@@ -329,8 +358,12 @@ class _ProyectosListaScreenState extends State<ProyectosListaScreen> {
                         if (proyecto.descripcion != null)
                           Text(
                             proyecto.descripcion!,
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: Colors.grey[600],
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                  fontSize: 17,
+                                  height: 1.25,
+                                  color: Theme.of(context).brightness == Brightness.dark
+                                      ? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.82)
+                                      : Colors.grey[700],
                                 ),
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
@@ -392,17 +425,9 @@ class _ProyectosListaScreenState extends State<ProyectosListaScreen> {
   }
 
   Color _getEstadoColor(EstadoActividad estado) {
-    switch (estado) {
-      case EstadoActividad.hoy:
-        return Colors.blue;
-      case EstadoActividad.manana:
-        return Colors.orange;
-      case EstadoActividad.programado:
-        return Colors.purple;
-      case EstadoActividad.pendientes:
-        return Colors.red;
-      default:
-        return Colors.grey;
-    }
+    return EstadoActividadColors.forEstado(
+      estado,
+      brightness: Theme.of(context).brightness,
+    );
   }
 }

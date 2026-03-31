@@ -4,6 +4,9 @@ import '../models/models.dart';
 import '../services/database_service.dart';
 import '../services/file_service.dart';
 import '../widgets/actividad_card.dart';
+import '../utils/estado_actividad_colors.dart';
+import '../utils/app_snackbar.dart';
+import '../utils/paleta_pasteles.dart';
 import '../utils/responsive.dart';
 import 'detalle_actividad_screen.dart';
 
@@ -53,7 +56,7 @@ class _DetalleProyectoScreenState extends State<DetalleProyectoScreen> {
       setState(() => _isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
+          AppSnackBar.error('Error: $e'),
         );
       }
     }
@@ -81,14 +84,10 @@ class _DetalleProyectoScreenState extends State<DetalleProyectoScreen> {
     }
 
     final isTablet = Responsive.isTablet(context);
-    Color proyectoColor = Colors.blue;
-    if (_proyecto!.color != null && _proyecto!.color!.isNotEmpty) {
-      try {
-        proyectoColor = Color(int.parse(_proyecto!.color!.replaceFirst('#', '0xFF')));
-      } catch (e) {
-        proyectoColor = Colors.blue;
-      }
-    }
+    final proyectoColor = PaletaPasteles.proyectoColorByMode(
+      _proyecto!.color,
+      Theme.of(context).brightness,
+    );
 
     return Scaffold(
       appBar: AppBar(
@@ -117,7 +116,7 @@ class _DetalleProyectoScreenState extends State<DetalleProyectoScreen> {
                       label: Text(
                         '${_actividades.where((a) => a.estado == EstadoActividad.completada).length} completadas',
                       ),
-                      avatar: const Icon(Icons.check_circle, size: 18),
+                      avatar: const Icon(Icons.star_outline, size: 18),
                     ),
                   ],
                 ),
@@ -180,7 +179,7 @@ class _DetalleProyectoScreenState extends State<DetalleProyectoScreen> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       SizedBox(
-                        height: 50,
+                        height: 60,
                         child: ListView.builder(
                           scrollDirection: Axis.horizontal,
                           itemCount: EstadoActividad.values
@@ -370,11 +369,14 @@ class _DetalleProyectoScreenState extends State<DetalleProyectoScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
+                const SizedBox(height: 4),
                 TextField(
                   controller: tituloController,
                   decoration: const InputDecoration(
                     labelText: 'Título *',
                     hintText: '¿Qué necesitas hacer?',
+                    floatingLabelBehavior: FloatingLabelBehavior.auto,
+                    contentPadding: EdgeInsets.symmetric(horizontal: 18, vertical: 16),
                   ),
                   autofocus: true,
                 ),
@@ -384,6 +386,8 @@ class _DetalleProyectoScreenState extends State<DetalleProyectoScreen> {
                   decoration: const InputDecoration(
                     labelText: 'Descripción',
                     hintText: 'Detalles adicionales (opcional)',
+                    floatingLabelBehavior: FloatingLabelBehavior.auto,
+                    contentPadding: EdgeInsets.symmetric(horizontal: 18, vertical: 16),
                   ),
                   maxLines: 3,
                 ),
@@ -567,9 +571,8 @@ class _DetalleProyectoScreenState extends State<DetalleProyectoScreen> {
       if (estadoSeleccionado == EstadoActividad.programado && fechaObjetivo == null) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Las actividades programadas requieren una fecha objetivo'),
-              backgroundColor: Colors.orange,
+            AppSnackBar.aviso(
+              'Las actividades programadas requieren una fecha objetivo',
             ),
           );
         }
@@ -618,16 +621,13 @@ class _DetalleProyectoScreenState extends State<DetalleProyectoScreen> {
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Actividad creada exitosamente'),
-              backgroundColor: Colors.green,
-            ),
+            AppSnackBar.exito('Actividad creada exitosamente'),
           );
         }
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error: $e')),
+            AppSnackBar.error('Error: $e'),
           );
         }
       }
@@ -643,12 +643,28 @@ class _DetalleProyectoScreenState extends State<DetalleProyectoScreen> {
   ) {
     final isSelected = estadoSeleccionado == estado;
     final color = _getEstadoColorChip(estado);
+    final icon = _getEstadoIconChip(estado);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final selectedForeground = isDark
+        ? const Color(0xFF1F2430)
+        : (color.computeLuminance() > 0.45
+              ? const Color(0xFF1F2430)
+              : const Color(0xFFF3F5FA));
     
     return FilterChip(
       selected: isSelected,
+      showCheckmark: false,
+      avatar: Icon(
+        icon,
+        size: 18,
+        color: isSelected ? selectedForeground : color,
+      ),
       label: Text(estado.nombre),
+      labelStyle: TextStyle(
+        color: isSelected ? selectedForeground : color,
+        fontWeight: FontWeight.w600,
+      ),
       selectedColor: color,
-      checkmarkColor: Colors.white,
       onSelected: (selected) {
         setDialogState(() {
           onSelected(estado);
@@ -657,21 +673,28 @@ class _DetalleProyectoScreenState extends State<DetalleProyectoScreen> {
     );
   }
 
-  Color _getEstadoColorChip(EstadoActividad estado) {
+  IconData _getEstadoIconChip(EstadoActividad estado) {
     switch (estado) {
       case EstadoActividad.bandeja:
-        return Colors.grey;
+        return Icons.inbox_outlined;
       case EstadoActividad.hoy:
-        return Colors.blue;
+        return Icons.today_outlined;
       case EstadoActividad.manana:
-        return Colors.orange;
+        return Icons.event_outlined;
       case EstadoActividad.programado:
-        return Colors.purple;
+        return Icons.schedule_outlined;
       case EstadoActividad.pendientes:
-        return Colors.red;
+        return Icons.pause_circle_outline;
       case EstadoActividad.completada:
-        return Colors.green;
+        return Icons.star_outline;
     }
+  }
+
+  Color _getEstadoColorChip(EstadoActividad estado) {
+    return EstadoActividadColors.forEstado(
+      estado,
+      brightness: Theme.of(context).brightness,
+    );
   }
 }
 

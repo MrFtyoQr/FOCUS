@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 import '../models/models.dart';
 import '../services/database_service.dart';
+import '../utils/estado_actividad_colors.dart';
+import '../utils/app_snackbar.dart';
+import '../utils/paleta_pasteles.dart';
 import '../utils/responsive.dart';
 
 /// Lista del equipo con gestión de personas
@@ -53,7 +56,7 @@ class _EquipoScreenState extends State<EquipoScreen> {
       setState(() => _isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al cargar equipo: $e')),
+          AppSnackBar.error('Error al cargar equipo: $e'),
         );
       }
     }
@@ -137,16 +140,13 @@ class _EquipoScreenState extends State<EquipoScreen> {
         
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Persona creada exitosamente'),
-              backgroundColor: Colors.green,
-            ),
+            AppSnackBar.exito('Persona creada exitosamente'),
           );
         }
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error al crear persona: $e')),
+            AppSnackBar.error('Error al crear persona: $e'),
           );
         }
       }
@@ -292,8 +292,23 @@ class _EquipoScreenState extends State<EquipoScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
                   _buildMiniMetrica('Total', total, Icons.list),
-                  _buildMiniMetrica('Completadas', completadas, Icons.check_circle, Colors.green),
-                  _buildMiniMetrica('En progreso', enProgreso, Icons.play_circle, Colors.blue),
+                  _buildMiniMetrica(
+                    'Completadas',
+                    completadas,
+                    Icons.star_outline,
+                    EstadoActividadColors.forEstado(
+                      EstadoActividad.completada,
+                      brightness: Theme.of(context).brightness,
+                    ),
+                  ),
+                  _buildMiniMetrica(
+                    'En progreso',
+                    enProgreso,
+                    Icons.play_circle_outline,
+                    PaletaPasteles.slidableMoverFondo(
+                      Theme.of(context).brightness,
+                    ),
+                  ),
                 ],
               ),
               const SizedBox(height: 12),
@@ -390,6 +405,11 @@ class _EquipoScreenState extends State<EquipoScreen> {
                       ],
                     ),
                   ),
+                  IconButton(
+                    tooltip: 'Cerrar',
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.pop(context),
+                  ),
                 ],
               ),
             ),
@@ -442,19 +462,9 @@ class _EquipoScreenState extends State<EquipoScreen> {
   }
 
   Color _getEstadoColor(EstadoActividad estado) {
-    switch (estado) {
-      case EstadoActividad.hoy:
-        return Colors.blue;
-      case EstadoActividad.manana:
-        return Colors.orange;
-      case EstadoActividad.programado:
-        return Colors.purple;
-      case EstadoActividad.pendientes:
-        return Colors.red;
-      case EstadoActividad.completada:
-        return Colors.green;
-      default:
-        return Colors.grey;
-    }
+    return EstadoActividadColors.forEstado(
+      estado,
+      brightness: Theme.of(context).brightness,
+    );
   }
 }

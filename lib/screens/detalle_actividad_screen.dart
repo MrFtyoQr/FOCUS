@@ -13,6 +13,8 @@ import '../models/models.dart';
 import '../services/database_service.dart';
 import '../services/file_service.dart';
 import '../widgets/mover_actividad_bottom_sheet.dart';
+import '../utils/app_snackbar.dart';
+import '../utils/estado_actividad_colors.dart';
 import '../utils/responsive.dart';
 
 /// Pantalla de detalle de actividad
@@ -54,7 +56,7 @@ class _DetalleActividadScreenState extends State<DetalleActividadScreen> {
         if (mounted) {
           Navigator.pop(context);
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Actividad no encontrada')),
+            AppSnackBar.aviso('Actividad no encontrada'),
           );
         }
         return;
@@ -93,7 +95,7 @@ class _DetalleActividadScreenState extends State<DetalleActividadScreen> {
       setState(() => _isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
+          AppSnackBar.error('Error: $e'),
         );
       }
     }
@@ -107,13 +109,13 @@ class _DetalleActividadScreenState extends State<DetalleActividadScreen> {
       await _cargarDatos();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Actividad actualizada')),
+          AppSnackBar.exito('Actividad actualizada'),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
+          AppSnackBar.error('Error: $e'),
         );
       }
     }
@@ -273,7 +275,7 @@ class _DetalleActividadScreenState extends State<DetalleActividadScreen> {
                         } catch (e) {
                           if (mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Error al eliminar asignación: $e')),
+                              AppSnackBar.error('Error al eliminar asignación: $e'),
                             );
                           }
                         }
@@ -470,7 +472,7 @@ class _DetalleActividadScreenState extends State<DetalleActividadScreen> {
       if (personas.isEmpty) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('No hay personas en el equipo')),
+            AppSnackBar.aviso('No hay personas en el equipo'),
           );
         }
         return;
@@ -509,7 +511,7 @@ class _DetalleActividadScreenState extends State<DetalleActividadScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
+          AppSnackBar.error('Error: $e'),
         );
       }
     }
@@ -567,13 +569,13 @@ class _DetalleActividadScreenState extends State<DetalleActividadScreen> {
         
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Nota agregada')),
+            AppSnackBar.exito('Nota agregada'),
           );
         }
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error: $e')),
+            AppSnackBar.error('Error: $e'),
           );
         }
       }
@@ -652,14 +654,14 @@ class _DetalleActividadScreenState extends State<DetalleActividadScreen> {
         
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Imagen agregada exitosamente')),
+            AppSnackBar.exito('Imagen agregada exitosamente'),
           );
         }
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al agregar imagen: $e')),
+          AppSnackBar.error('Error al agregar imagen: $e'),
         );
       }
     }
@@ -706,14 +708,14 @@ class _DetalleActividadScreenState extends State<DetalleActividadScreen> {
         
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Archivo agregado exitosamente')),
+            AppSnackBar.exito('Archivo agregado exitosamente'),
           );
         }
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al agregar archivo: $e')),
+          AppSnackBar.error('Error al agregar archivo: $e'),
         );
       }
     }
@@ -861,7 +863,7 @@ class _DetalleActividadScreenState extends State<DetalleActividadScreen> {
                           _cargarDatos();
                           if (mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Archivo eliminado')),
+                              AppSnackBar.exito('Archivo eliminado'),
                             );
                           }
                         }
@@ -951,7 +953,9 @@ class _DetalleActividadScreenState extends State<DetalleActividadScreen> {
         } else {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('No se encontró una aplicación para abrir este archivo')),
+              AppSnackBar.aviso(
+                'No se encontró una aplicación para abrir este archivo',
+              ),
             );
           }
         }
@@ -959,7 +963,7 @@ class _DetalleActividadScreenState extends State<DetalleActividadScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al abrir archivo: $e')),
+          AppSnackBar.error('Error al abrir archivo: $e'),
         );
       }
     }
@@ -1270,55 +1274,45 @@ class _DetalleActividadScreenState extends State<DetalleActividadScreen> {
   }
 
   Color _getEstadoColor(EstadoActividad estado) {
-    switch (estado) {
-      case EstadoActividad.bandeja:
-        return Colors.grey;
-      case EstadoActividad.hoy:
-        return Colors.blue;
-      case EstadoActividad.manana:
-        return Colors.orange;
-      case EstadoActividad.programado:
-        return Colors.purple;
-      case EstadoActividad.pendientes:
-        return Colors.red;
-      case EstadoActividad.completada:
-        return Colors.green;
-    }
+    return EstadoActividadColors.forEstado(
+      estado,
+      brightness: Theme.of(context).brightness,
+    );
   }
 
   IconData _getEstadoIcon(EstadoActividad estado) {
     switch (estado) {
       case EstadoActividad.bandeja:
-        return Icons.inbox;
+        return Icons.inbox_outlined;
       case EstadoActividad.hoy:
-        return Icons.today;
+        return Icons.today_outlined;
       case EstadoActividad.manana:
-        return Icons.event;
+        return Icons.event_outlined;
       case EstadoActividad.programado:
-        return Icons.calendar_today;
+        return Icons.schedule_outlined;
       case EstadoActividad.pendientes:
-        return Icons.pause_circle;
+        return Icons.pause_circle_outline;
       case EstadoActividad.completada:
-        return Icons.check_circle;
+        return Icons.star_outline;
     }
   }
 
   IconData _getTipoEventoIcon(TipoEvento tipo) {
     switch (tipo) {
       case TipoEvento.create:
-        return Icons.add_circle;
+        return Icons.add_circle_outline;
       case TipoEvento.move:
         return Icons.swap_horiz;
       case TipoEvento.complete:
-        return Icons.check_circle;
+        return Icons.star_outline;
       case TipoEvento.assign:
-        return Icons.person;
+        return Icons.person_outline;
       case TipoEvento.attach:
-        return Icons.attach_file;
+        return Icons.attach_file_outlined;
       case TipoEvento.update:
-        return Icons.edit;
+        return Icons.edit_outlined;
       case TipoEvento.delete:
-        return Icons.delete;
+        return Icons.delete_outline;
     }
   }
 
@@ -1408,7 +1402,7 @@ class _DetalleActividadScreenState extends State<DetalleActividadScreen> {
                         },
                       )
                     : SizedBox(
-                        height: 50,
+                        height: 60,
                         child: ListView.builder(
                           scrollDirection: Axis.horizontal,
                           itemCount: EstadoActividad.values.length,
@@ -1559,9 +1553,8 @@ class _DetalleActividadScreenState extends State<DetalleActividadScreen> {
         if (estadoSeleccionado == EstadoActividad.programado && fechaObjetivo == null) {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Las actividades programadas requieren una fecha objetivo'),
-                backgroundColor: Colors.orange,
+              AppSnackBar.aviso(
+                'Las actividades programadas requieren una fecha objetivo',
               ),
             );
           }
@@ -1596,16 +1589,13 @@ class _DetalleActividadScreenState extends State<DetalleActividadScreen> {
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Actividad actualizada exitosamente'),
-              backgroundColor: Colors.green,
-            ),
+            AppSnackBar.exito('Actividad actualizada exitosamente'),
           );
         }
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error: $e')),
+            AppSnackBar.error('Error: $e'),
           );
         }
       }

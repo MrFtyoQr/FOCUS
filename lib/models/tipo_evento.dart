@@ -32,11 +32,11 @@ extension TipoEventoExtension on TipoEvento {
   String get icono {
     switch (this) {
       case TipoEvento.create:
-        return 'add_circle';
+        return 'add_circle_outline';
       case TipoEvento.move:
         return 'swap_horiz';
       case TipoEvento.complete:
-        return 'check_circle';
+        return 'star_outline';
       case TipoEvento.assign:
         return 'person';
       case TipoEvento.attach:

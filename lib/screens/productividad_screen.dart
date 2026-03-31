@@ -2,7 +2,46 @@ import 'package:flutter/material.dart';
 import '../models/models.dart';
 import '../services/database_service.dart';
 import '../services/notification_service.dart';
+import '../utils/app_snackbar.dart';
+import '../utils/estado_actividad_colors.dart';
 import '../utils/responsive.dart';
+
+/// Paleta pastel para esta pantalla (evita acentos muy saturados).
+class _ProductividadColors {
+  // Light mode: tonos coloridos pero suaves.
+  static const metricHoyLight = Color(0xFF4F7FD1);
+  static const metricSemanaLight = Color(0xFF4DAA72);
+  static const metricTotalLight = Color(0xFF8C6BCB);
+
+  // Dark mode: acentos pastel para evitar brillo/neón.
+  static const metricHoyDark = Color(0xFF8FB4E0);
+  static const metricSemanaDark = Color(0xFFA8DCC8);
+  static const metricTotalDark = Color(0xFFC4B8E8);
+
+  /// Fondos claros para tarjetas Hoy / Semana / Total (solo light mode).
+  static const metricCardBgHoyLight = Color(0xFFF2F6FC);
+  static const metricCardBgSemanaLight = Color(0xFFF2F8F4);
+  static const metricCardBgTotalLight = Color(0xFFF5F2FA);
+
+  /// Distribución por estado y Flujo Bandeja → Hoy (solo light mode).
+  static const sectionCardLight = Color(0xFFF7F7F7);
+
+  /// Alertas (light más visible; dark se mantiene suave).
+  static const alertBgLight = Color(0xFFF7E7B5);
+  static const alertAccentLight = Color(0xFFD4A03A);
+  static const alertTextLight = Color(0xFF5A4622);
+
+  static const alertBgDark = Color(0xFFF5E6D4);
+  static const alertAccentDark = Color(0xFFD4A574);
+  /// Texto sobre fondo de alerta en dark.
+  static const alertTextDark = Color(0xFF4A3428);
+
+  static const progressGoodLight = Color(0xFF4DAA72);
+  static const progressWarnLight = Color(0xFFE78A4E);
+  static const progressGoodDark = Color(0xFF9BC9A8);
+  static const progressWarnDark = Color(0xFFE8C4A0);
+
+}
 
 /// Dashboard de productividad con métricas
 class ProductividadScreen extends StatefulWidget {
@@ -13,6 +52,36 @@ class ProductividadScreen extends StatefulWidget {
 }
 
 class _ProductividadScreenState extends State<ProductividadScreen> {
+  Color _alertBg() {
+    return Theme.of(context).brightness == Brightness.light
+        ? _ProductividadColors.alertBgLight
+        : _ProductividadColors.alertBgDark;
+  }
+
+  Color _alertAccent() {
+    return Theme.of(context).brightness == Brightness.light
+        ? _ProductividadColors.alertAccentLight
+        : _ProductividadColors.alertAccentDark;
+  }
+
+  Color _alertText() {
+    return Theme.of(context).brightness == Brightness.light
+        ? _ProductividadColors.alertTextLight
+        : _ProductividadColors.alertTextDark;
+  }
+
+  Color _flowProgressColor(double ratio) {
+    final isLight = Theme.of(context).brightness == Brightness.light;
+    if (ratio > 50) {
+      return isLight
+          ? _ProductividadColors.progressGoodLight
+          : _ProductividadColors.progressGoodDark;
+    }
+    return isLight
+        ? _ProductividadColors.progressWarnLight
+        : _ProductividadColors.progressWarnDark;
+  }
+
   bool _isLoading = true;
   Map<String, dynamic> _metricas = {};
 
@@ -125,7 +194,7 @@ class _ProductividadScreenState extends State<ProductividadScreen> {
       setState(() => _isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al cargar métricas: $e')),
+          AppSnackBar.error('Error al cargar métricas: $e'),
         );
       }
     }
@@ -168,9 +237,8 @@ class _ProductividadScreenState extends State<ProductividadScreen> {
                         await notificationService.probarNotificacion8AM();
                         if (mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Notificación de prueba enviada. Revisa tu bandeja de notificaciones.'),
-                              backgroundColor: Colors.green,
+                            AppSnackBar.exito(
+                              'Notificación de prueba enviada. Revisa tu bandeja de notificaciones.',
                             ),
                           );
                         }
@@ -187,9 +255,8 @@ class _ProductividadScreenState extends State<ProductividadScreen> {
                         await notificationService.probarNotificacion1PM();
                         if (mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Notificación de prueba enviada. Revisa tu bandeja de notificaciones.'),
-                              backgroundColor: Colors.green,
+                            AppSnackBar.exito(
+                              'Notificación de prueba enviada. Revisa tu bandeja de notificaciones.',
                             ),
                           );
                         }
@@ -206,9 +273,8 @@ class _ProductividadScreenState extends State<ProductividadScreen> {
                         await notificationService.probarNotificacion9PM();
                         if (mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Notificación de prueba enviada. Revisa tu bandeja de notificaciones.'),
-                              backgroundColor: Colors.green,
+                            AppSnackBar.exito(
+                              'Notificación de prueba enviada. Revisa tu bandeja de notificaciones.',
                             ),
                           );
                         }
@@ -233,8 +299,6 @@ class _ProductividadScreenState extends State<ProductividadScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isTablet = Responsive.isTablet(context);
-    
     return Scaffold(
       appBar: AppBar(
         title: const Text('Productividad'),
@@ -259,31 +323,43 @@ class _ProductividadScreenState extends State<ProductividadScreen> {
                 padding: EdgeInsets.all(Responsive.getHorizontalPadding(context)),
                 children: [
                   const SizedBox(height: 8),
-                  // Métricas principales
-                  if (isTablet)
-                    Row(
-                      children: [
-                        Expanded(child: _buildMetricaCard('Hoy', _metricas['completadasHoy'], Icons.today, Colors.blue)),
-                        const SizedBox(width: 16),
-                        Expanded(child: _buildMetricaCard('Semana', _metricas['completadasSemana'], Icons.calendar_view_week, Colors.green)),
-                        const SizedBox(width: 16),
-                        Expanded(child: _buildMetricaCard('Total', _metricas['total'], Icons.list, Colors.purple)),
-                      ],
-                    )
-                  else
-                    Column(
-                      children: [
-                        _buildMetricaCard('Hoy', _metricas['completadasHoy'], Icons.today, Colors.blue),
-                        const SizedBox(height: 16),
-                        _buildMetricaCard('Semana', _metricas['completadasSemana'], Icons.calendar_view_week, Colors.green),
-                        const SizedBox(height: 16),
-                        _buildMetricaCard('Total', _metricas['total'], Icons.list, Colors.purple),
-                      ],
-                    ),
+                  // Métricas principales (siempre en fila)
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: _buildMetricaCard(
+                          'Hoy',
+                          _metricas['completadasHoy'],
+                          Icons.today,
+                          _ProductividadColors.metricHoyLight,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _buildMetricaCard(
+                          'Semana',
+                          _metricas['completadasSemana'],
+                          Icons.calendar_view_week,
+                          _ProductividadColors.metricSemanaLight,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _buildMetricaCard(
+                          'Total',
+                          _metricas['total'],
+                          Icons.list,
+                          _ProductividadColors.metricTotalLight,
+                        ),
+                      ),
+                    ],
+                  ),
                   const SizedBox(height: 24),
                   
                   // Distribución por estado
                   Card(
+                    color: _sectionCardColor(context),
                     child: Padding(
                       padding: const EdgeInsets.all(16.0),
                       child: Column(
@@ -311,7 +387,7 @@ class _ProductividadScreenState extends State<ProductividadScreen> {
                   // Alertas
                   if (_metricas['deadlinesProximos'] > 0 || _metricas['bloqueadas'] > 0)
                     Card(
-                      color: Colors.orange.shade50,
+                      color: _alertBg(),
                       child: Padding(
                         padding: const EdgeInsets.all(16.0),
                         child: Column(
@@ -319,13 +395,13 @@ class _ProductividadScreenState extends State<ProductividadScreen> {
                           children: [
                             Row(
                               children: [
-                                Icon(Icons.warning, color: Colors.orange[700]),
+                                Icon(Icons.warning_amber_rounded, color: _alertAccent()),
                                 const SizedBox(width: 8),
                                 Text(
                                   'Alertas',
                                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                                         fontWeight: FontWeight.bold,
-                                        color: Colors.orange[900],
+                                        color: _alertText(),
                                       ),
                                 ),
                               ],
@@ -335,13 +411,16 @@ class _ProductividadScreenState extends State<ProductividadScreen> {
                               _buildAlertaItem(
                                 Icons.calendar_today,
                                 '${_metricas['deadlinesProximos']} deadlines próximos (3 días)',
-                                Colors.orange,
+                                _alertAccent(),
                               ),
                             if (_metricas['bloqueadas'] > 0)
                               _buildAlertaItem(
-                                Icons.pause_circle,
+                                Icons.pause_circle_outline,
                                 '${_metricas['bloqueadas']} actividades bloqueadas > 7 días',
-                                Colors.red,
+                                EstadoActividadColors.forEstado(
+                                  EstadoActividad.pendientes,
+                                  brightness: Theme.of(context).brightness,
+                                ),
                               ),
                           ],
                         ),
@@ -351,6 +430,7 @@ class _ProductividadScreenState extends State<ProductividadScreen> {
                   
                   // Ratio Bandeja → Hoy
                   Card(
+                    color: _sectionCardColor(context),
                     child: Padding(
                       padding: const EdgeInsets.all(16.0),
                       child: Column(
@@ -365,16 +445,23 @@ class _ProductividadScreenState extends State<ProductividadScreen> {
                           const SizedBox(height: 8),
                           Text(
                             'Ratio de actividades movidas de Bandeja a Hoy',
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: Colors.grey[600],
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                  fontSize: 14,
+                                  height: 1.25,
+                                  color: Theme.of(context).brightness == Brightness.dark
+                                      ? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.82)
+                                      : Theme.of(context).colorScheme.onSurfaceVariant,
                                 ),
                           ),
                           const SizedBox(height: 12),
                           LinearProgressIndicator(
                             value: (_metricas['ratioBandejaHoy'] as double? ?? 0.0) / 100,
-                            backgroundColor: Colors.grey[200],
+                            backgroundColor:
+                                Theme.of(context).colorScheme.surfaceContainerHighest,
                             valueColor: AlwaysStoppedAnimation<Color>(
-                              _metricas['ratioBandejaHoy'] > 50 ? Colors.green : Colors.orange,
+                              _flowProgressColor(
+                                _metricas['ratioBandejaHoy'] as double? ?? 0.0,
+                              ),
                             ),
                           ),
                           const SizedBox(height: 8),
@@ -394,26 +481,80 @@ class _ProductividadScreenState extends State<ProductividadScreen> {
     );
   }
 
+  Color? _sectionCardColor(BuildContext context) {
+    return Theme.of(context).brightness == Brightness.light
+        ? _ProductividadColors.sectionCardLight
+        : null;
+  }
+
+  Color _metricCardBackground(String titulo, Color accent, Brightness brightness) {
+    if (brightness == Brightness.light) {
+      switch (titulo) {
+        case 'Hoy':
+          return _ProductividadColors.metricCardBgHoyLight;
+        case 'Semana':
+          return _ProductividadColors.metricCardBgSemanaLight;
+        case 'Total':
+          return _ProductividadColors.metricCardBgTotalLight;
+        default:
+          return _ProductividadColors.metricCardBgHoyLight;
+      }
+    }
+    return accent.withValues(alpha: 0.12);
+  }
+
+  Color _metricAccent(String titulo, Brightness brightness) {
+    final isLight = brightness == Brightness.light;
+    switch (titulo) {
+      case 'Hoy':
+        return isLight
+            ? _ProductividadColors.metricHoyLight
+            : _ProductividadColors.metricHoyDark;
+      case 'Semana':
+        return isLight
+            ? _ProductividadColors.metricSemanaLight
+            : _ProductividadColors.metricSemanaDark;
+      case 'Total':
+      default:
+        return isLight
+            ? _ProductividadColors.metricTotalLight
+            : _ProductividadColors.metricTotalDark;
+    }
+  }
+
   Widget _buildMetricaCard(String titulo, int valor, IconData icono, Color color) {
+    final brightness = Theme.of(context).brightness;
+    final accent = _metricAccent(titulo, brightness);
     return Card(
-      color: color.withOpacity(0.1),
+      color: _metricCardBackground(titulo, accent, brightness),
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icono, size: 32, color: color),
-            const SizedBox(height: 8),
-            Text(
-              valor.toString(),
-              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: color,
-                  ),
+            Icon(icono, size: 28, color: accent),
+            const SizedBox(height: 6),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                valor.toString(),
+                maxLines: 1,
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: accent,
+                    ),
+              ),
             ),
             Text(
               titulo,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Colors.grey[600],
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    fontSize: 17,
+                    color: brightness == Brightness.dark
+                        ? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.84)
+                        : Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
             ),
           ],
@@ -462,7 +603,7 @@ class _ProductividadScreenState extends State<ProductividadScreen> {
             height: 8,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(4),
-              color: Colors.grey[200],
+              color: Theme.of(context).colorScheme.surfaceContainerHighest,
             ),
             child: FractionallySizedBox(
               alignment: Alignment.centerLeft,
@@ -490,7 +631,11 @@ class _ProductividadScreenState extends State<ProductividadScreen> {
           Expanded(
             child: Text(
               texto,
-              style: Theme.of(context).textTheme.bodyMedium,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: _alertText(),
+                    fontWeight: FontWeight.w600,
+                    height: 1.35,
+                  ),
             ),
           ),
         ],
@@ -499,36 +644,26 @@ class _ProductividadScreenState extends State<ProductividadScreen> {
   }
 
   Color _getEstadoColor(EstadoActividad estado) {
-    switch (estado) {
-      case EstadoActividad.bandeja:
-        return Colors.grey;
-      case EstadoActividad.hoy:
-        return Colors.blue;
-      case EstadoActividad.manana:
-        return Colors.orange;
-      case EstadoActividad.programado:
-        return Colors.purple;
-      case EstadoActividad.pendientes:
-        return Colors.red;
-      case EstadoActividad.completada:
-        return Colors.green;
-    }
+    return EstadoActividadColors.forEstado(
+      estado,
+      brightness: Theme.of(context).brightness,
+    );
   }
 
   IconData _getEstadoIcon(EstadoActividad estado) {
     switch (estado) {
       case EstadoActividad.bandeja:
-        return Icons.inbox;
+        return Icons.inbox_outlined;
       case EstadoActividad.hoy:
-        return Icons.today;
+        return Icons.today_outlined;
       case EstadoActividad.manana:
-        return Icons.event;
+        return Icons.event_outlined;
       case EstadoActividad.programado:
-        return Icons.calendar_today;
+        return Icons.schedule_outlined;
       case EstadoActividad.pendientes:
-        return Icons.pause_circle;
+        return Icons.pause_circle_outline;
       case EstadoActividad.completada:
-        return Icons.check_circle;
+        return Icons.star_outline;
     }
   }
 }

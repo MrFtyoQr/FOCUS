@@ -1,14 +1,13 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
-import 'utils/app_theme.dart';
+
 import 'screens/main_navigation.dart';
 import 'services/database_service.dart';
 import 'services/notification_service.dart';
-
-import 'dart:io';
-import 'package:flutter/material.dart';
-import 'package:sqflite/sqflite.dart';
-import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'utils/app_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

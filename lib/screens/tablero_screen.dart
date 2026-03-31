@@ -3,6 +3,7 @@ import '../models/models.dart';
 import '../services/database_service.dart';
 import '../widgets/actividad_card.dart';
 import '../widgets/mover_actividad_bottom_sheet.dart';
+import '../utils/app_snackbar.dart';
 import '../utils/responsive.dart';
 import 'detalle_actividad_screen.dart';
 import 'historial_screen.dart';
@@ -74,7 +75,7 @@ class _TableroScreenState extends State<TableroScreen> {
       setState(() => _isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al cargar actividades: $e')),
+          AppSnackBar.error('Error al cargar actividades: $e'),
         );
       }
     }
@@ -115,6 +116,10 @@ class _TableroScreenState extends State<TableroScreen> {
               ? Padding(
                   padding: EdgeInsets.all(Responsive.getHorizontalPadding(context)),
                   child: SegmentedButton<EstadoActividad>(
+                    style: SegmentedButton.styleFrom(
+                      visualDensity: VisualDensity.compact,
+                      shape: const StadiumBorder(),
+                    ),
                     segments: _estados.map((estado) {
                       return ButtonSegment<EstadoActividad>(
                         value: estado,
@@ -141,6 +146,7 @@ class _TableroScreenState extends State<TableroScreen> {
                         padding: const EdgeInsets.only(right: 8.0),
                         child: FilterChip(
                           selected: isSelected,
+                          shape: const StadiumBorder(),
                           label: Text(
                             estado.nombre,
                             style: TextStyle(
@@ -170,6 +176,18 @@ class _TableroScreenState extends State<TableroScreen> {
           Expanded(
             child: AnimatedSwitcher(
               duration: const Duration(milliseconds: 300),
+              // Sin expandir el hijo, el Stack del switcher centra la lista y el viewport
+              // queda más bajo que la pantalla (lista “recortada” con hueco debajo).
+              layoutBuilder: (currentChild, previousChildren) {
+                return Stack(
+                  fit: StackFit.expand,
+                  alignment: Alignment.center,
+                  children: [
+                    ...previousChildren,
+                    if (currentChild != null) currentChild,
+                  ],
+                );
+              },
               child: _buildListaActividades(),
             ),
           ),
@@ -315,15 +333,13 @@ class _TableroScreenState extends State<TableroScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('${actividad.titulo} completada'),
-            action: SnackBarAction(
-              label: 'Deshacer',
-              onPressed: () async {
-                await db.actualizarActividad(actividad);
-                _cargarDatos();
-              },
-            ),
+          AppSnackBar.exito(
+            '${actividad.titulo} completada',
+            etiquetaAccion: 'Deshacer',
+            alAccion: () async {
+              await db.actualizarActividad(actividad);
+              _cargarDatos();
+            },
           ),
         );
       }
@@ -333,7 +349,7 @@ class _TableroScreenState extends State<TableroScreen> {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('Error: $e')));
+        ).showSnackBar(AppSnackBar.error('Error: $e'));
       }
     }
   }
@@ -358,11 +374,8 @@ class _TableroScreenState extends State<TableroScreen> {
           actividad.fechaObjetivo == null) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(
-                'Las actividades programadas requieren una fecha objetivo',
-              ),
-              backgroundColor: Colors.orange,
+            AppSnackBar.aviso(
+              'Las actividades programadas requieren una fecha objetivo',
             ),
           );
         }
@@ -382,19 +395,17 @@ class _TableroScreenState extends State<TableroScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Movida a ${nuevoEstado.nombre}'),
-            action: SnackBarAction(
-              label: 'Deshacer',
-              onPressed: () async {
-                final actividadRestaurada = actividadMovida.copyWith(
-                  estado: estadoAnterior,
-                  updatedAt: DateTime.now(),
-                );
-                await db.actualizarActividad(actividadRestaurada);
-                _cargarDatos();
-              },
-            ),
+          AppSnackBar.exito(
+            'Movida a ${nuevoEstado.nombre}',
+            etiquetaAccion: 'Deshacer',
+            alAccion: () async {
+              final actividadRestaurada = actividadMovida.copyWith(
+                estado: estadoAnterior,
+                updatedAt: DateTime.now(),
+              );
+              await db.actualizarActividad(actividadRestaurada);
+              _cargarDatos();
+            },
           ),
         );
       }
@@ -404,7 +415,7 @@ class _TableroScreenState extends State<TableroScreen> {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('Error al mover: $e')));
+        ).showSnackBar(AppSnackBar.error('Error al mover: $e'));
       }
     }
   }
@@ -414,15 +425,15 @@ class _TableroScreenState extends State<TableroScreen> {
       case EstadoActividad.bandeja:
         return Icons.inbox_outlined;
       case EstadoActividad.hoy:
-        return Icons.today;
+        return Icons.today_outlined;
       case EstadoActividad.manana:
-        return Icons.event;
+        return Icons.event_outlined;
       case EstadoActividad.programado:
-        return Icons.calendar_today;
+        return Icons.schedule_outlined;
       case EstadoActividad.pendientes:
         return Icons.pause_circle_outline;
       case EstadoActividad.completada:
-        return Icons.check_circle_outline;
+        return Icons.star_outline;
     }
   }
 }

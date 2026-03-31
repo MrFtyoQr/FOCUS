@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/models.dart';
 import '../services/database_service.dart';
 import '../widgets/actividad_card.dart';
+import '../utils/app_snackbar.dart';
 import '../utils/responsive.dart';
 import 'detalle_actividad_screen.dart';
 
@@ -50,7 +51,7 @@ class _HistorialScreenState extends State<HistorialScreen> {
       setState(() => _isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
+          AppSnackBar.error('Error: $e'),
         );
       }
     }
@@ -321,7 +322,7 @@ class _HistorialScreenState extends State<HistorialScreen> {
                             },
                           )
                         : SizedBox(
-                            height: 50,
+                            height: 60,
                             child: ListView.builder(
                               scrollDirection: Axis.horizontal,
                               itemCount: EstadoActividad.values.length + 1,

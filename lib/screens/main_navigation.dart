@@ -14,6 +14,11 @@ class MainNavigation extends StatefulWidget {
 }
 
 class _MainNavigationState extends State<MainNavigation> {
+  static const double _iconSize = 28.0;
+  static const double _selectedIconSize = 31.0;
+  static const double _selectorSize = 58.0;
+  /// Misma elevación para ícono seleccionado y círculo (centrados a la misma altura).
+  static const double _selectedLift = -15.0;
   int _currentIndex = 0;
   final List<GlobalKey> _screenKeys = [
     GlobalKey(),
@@ -30,9 +35,9 @@ class _MainNavigationState extends State<MainNavigation> {
     super.initState();
     _screens.addAll([
       TableroScreen(key: _screenKeys[0]),
-      CapturaScreen(key: _screenKeys[1]),
-      ProyectosListaScreen(key: _screenKeys[2]),
-      ProductividadScreen(key: _screenKeys[3]),
+      ProductividadScreen(key: _screenKeys[1]),
+      CapturaScreen(key: _screenKeys[2]),
+      ProyectosListaScreen(key: _screenKeys[3]),
       EquipoScreen(key: _screenKeys[4]),
     ]);
   }
@@ -44,46 +49,100 @@ class _MainNavigationState extends State<MainNavigation> {
         index: _currentIndex,
         children: _screens,
       ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _currentIndex,
-        onDestinationSelected: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
-          // Recargar datos cuando se vuelve al Tablero
-          if (index == 0) {
-            // El Tablero se recargará automáticamente al ser visible
-          }
-        },
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.dashboard_outlined),
-            selectedIcon: Icon(Icons.dashboard),
-            label: 'Tablero',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.add_circle_outline),
-            selectedIcon: Icon(Icons.add_circle),
-            label: 'Capturar',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.folder_outlined),
-            selectedIcon: Icon(Icons.folder),
-            label: 'Proyectos',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.insights_outlined),
-            selectedIcon: Icon(Icons.insights),
-            label: 'Productividad',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.people_outline),
-            selectedIcon: Icon(Icons.people),
-            label: 'Equipo',
-          ),
-        ],
+      bottomNavigationBar: _buildCustomTabBar(context),
+    );
+  }
+
+  Widget _buildCustomTabBar(BuildContext context) {
+    const icons = [
+      Icons.dashboard_outlined,
+      Icons.insights_outlined,
+      Icons.add_circle_outline,
+      Icons.folder_outlined,
+      Icons.people_outline,
+    ];
+    return SafeArea(
+      top: false,
+      child: SizedBox(
+        height: 70,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final tabWidth = constraints.maxWidth / icons.length;
+            final selectorLeft =
+                (_currentIndex * tabWidth) + ((tabWidth - _selectorSize) / 2);
+
+            return Stack(
+              alignment: Alignment.center,
+              clipBehavior: Clip.none,
+              children: [
+                Align(
+                  alignment: Alignment.bottomCenter,
+                  child: Container(
+                    height: 56,
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.surface,
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(24),
+                      ),
+                    ),
+                  ),
+                ),
+                AnimatedPositioned(
+                  duration: const Duration(milliseconds: 320),
+                  curve: Curves.easeOutCubic,
+                  top: _selectedLift + 6,
+                  left: selectorLeft,
+                  child: Container(
+                    width: _selectorSize,
+                    height: _selectorSize,
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.primary,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ),
+                Row(
+                  children: List.generate(icons.length, (index) {
+                    final selected = index == _currentIndex;
+                    return Expanded(
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () => setState(() => _currentIndex = index),
+                        child: Transform.translate(
+                          offset: Offset(0, selected ? _selectedLift : 0),
+                          child: AnimatedScale(
+                            duration: const Duration(milliseconds: 220),
+                            curve: Curves.easeOutCubic,
+                            scale: selected ? 1.05 : 1.0,
+                            child: Icon(
+                              icons[index],
+                              size: selected ? _selectedIconSize : _iconSize,
+                              color: selected
+                                  ? _selectedTabIconColorFor(context)
+                                  : Theme.of(context).colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  }),
+                ),
+              ],
+            );
+          },
+        ),
       ),
     );
+  }
+
+  /// Ícono del tab seleccionado: #EAEAEA en claro; #1A1A1A en oscuro (sin cambiar dark).
+  static const Color _selectedTabIconDarkMode = Color(0xFF1A1A1A);
+  static const Color _selectedTabIconLightMode = Color(0xFFEAEAEA);
+
+  Color _selectedTabIconColorFor(BuildContext context) {
+    return Theme.of(context).brightness == Brightness.light
+        ? _selectedTabIconLightMode
+        : _selectedTabIconDarkMode;
   }
 }
 

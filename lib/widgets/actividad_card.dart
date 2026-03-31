@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:intl/intl.dart';
 import '../models/models.dart';
+import '../utils/estado_actividad_colors.dart';
+import '../utils/paleta_pasteles.dart';
 
 /// Widget de tarjeta para mostrar una actividad en las listas
 class ActividadCard extends StatelessWidget {
@@ -30,6 +32,10 @@ class ActividadCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final dateFormat = DateFormat('dd/MM/yyyy HH:mm');
+    final isLight = theme.brightness == Brightness.light;
+    final slidableForeground = isLight
+        ? const Color(0xFFF3F5FA)
+        : PaletaPasteles.slidableCompletarPrimerPlano;
 
     return Slidable(
       key: ValueKey(actividad.id),
@@ -38,8 +44,10 @@ class ActividadCard extends StatelessWidget {
         children: [
           SlidableAction(
             onPressed: (_) => onComplete?.call(),
-            backgroundColor: Colors.green,
-            foregroundColor: Colors.white,
+            backgroundColor: PaletaPasteles.slidableCompletarFondo(
+              Theme.of(context).brightness,
+            ),
+            foregroundColor: slidableForeground,
             icon: Icons.check,
             label: 'Completar',
             borderRadius: BorderRadius.circular(12),
@@ -51,8 +59,10 @@ class ActividadCard extends StatelessWidget {
         children: [
           SlidableAction(
             onPressed: (_) => onMove?.call(),
-            backgroundColor: Colors.blue,
-            foregroundColor: Colors.white,
+            backgroundColor: PaletaPasteles.slidableMoverFondo(
+              Theme.of(context).brightness,
+            ),
+            foregroundColor: slidableForeground,
             icon: Icons.swap_horiz,
             label: 'Mover',
             borderRadius: BorderRadius.circular(12),
@@ -95,7 +105,7 @@ class ActividadCard extends StatelessWidget {
                         context,
                         Icons.folder_outlined,
                         proyecto!.nombre,
-                        _getColorFromString(proyecto!.color),
+                        _getColorFromString(context, proyecto!.color),
                       ),
                     if (personaAsignada != null)
                       _buildChip(
@@ -109,9 +119,14 @@ class ActividadCard extends StatelessWidget {
                         context,
                         Icons.calendar_today,
                         DateFormat('dd/MM/yyyy').format(actividad.fechaObjetivo!),
-                        _isDeadlineProximo(actividad.fechaObjetivo!)
-                            ? Colors.orange
-                            : theme.colorScheme.secondary,
+                        actividad.estado == EstadoActividad.programado
+                            ? EstadoActividadColors.forEstado(
+                                EstadoActividad.programado,
+                                brightness: theme.brightness,
+                              )
+                            : (_isDeadlineProximo(actividad.fechaObjetivo!)
+                                ? PaletaPasteles.fechaUrgente(theme.brightness)
+                                : PaletaPasteles.fechaNormal(theme.brightness)),
                       ),
                     if (actividad.tieneAdjuntos)
                       _buildChip(
@@ -127,7 +142,7 @@ class ActividadCard extends StatelessWidget {
                 Text(
                   'Actualizado: ${dateFormat.format(actividad.updatedAt)}',
                   style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurface.withOpacity(0.6),
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                   ),
                 ),
               ],
@@ -139,18 +154,28 @@ class ActividadCard extends StatelessWidget {
   }
 
   Widget _buildEstadoBadge(BuildContext context) {
-    final color = _getEstadoColor(actividad.estado);
+    final theme = Theme.of(context);
+    final base = EstadoActividadColors.forEstado(
+      actividad.estado,
+      brightness: theme.brightness,
+    );
+    final onSurf = theme.colorScheme.onSurface;
+    final t = theme.brightness == Brightness.dark ? 0.32 : 0.06;
+    final color = Color.lerp(base, onSurf, t)!;
+    final fillA = theme.brightness == Brightness.dark ? 0.14 : 0.18;
+    final borderA = theme.brightness == Brightness.dark ? 0.26 : 0.38;
+    final textA = theme.brightness == Brightness.dark ? 0.82 : 0.9;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.2),
+        color: color.withValues(alpha: fillA),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color, width: 1),
+        border: Border.all(color: color.withValues(alpha: borderA), width: 1),
       ),
       child: Text(
         actividad.estado.nombre,
         style: TextStyle(
-          color: color,
+          color: color.withValues(alpha: textA),
           fontSize: 12,
           fontWeight: FontWeight.w600,
         ),
@@ -167,29 +192,12 @@ class ActividadCard extends StatelessWidget {
         color: color,
         fontWeight: FontWeight.w500,
       ),
-      backgroundColor: color.withOpacity(0.1),
-      side: BorderSide(color: color.withOpacity(0.3)),
+      backgroundColor: color.withValues(alpha: 0.12),
+      side: BorderSide(color: color.withValues(alpha: 0.35)),
       padding: EdgeInsets.zero,
       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
       visualDensity: VisualDensity.compact,
     );
-  }
-
-  Color _getEstadoColor(EstadoActividad estado) {
-    switch (estado) {
-      case EstadoActividad.bandeja:
-        return Colors.grey;
-      case EstadoActividad.hoy:
-        return Colors.blue;
-      case EstadoActividad.manana:
-        return Colors.orange;
-      case EstadoActividad.programado:
-        return Colors.purple;
-      case EstadoActividad.pendientes:
-        return Colors.red;
-      case EstadoActividad.completada:
-        return Colors.green;
-    }
   }
 
   String _getTituloConProyecto() {
@@ -199,15 +207,11 @@ class ActividadCard extends StatelessWidget {
     return actividad.titulo;
   }
 
-  Color _getColorFromString(String? colorHex) {
-    if (colorHex == null || colorHex.isEmpty) {
-      return Colors.grey;
-    }
-    try {
-      return Color(int.parse(colorHex.replaceFirst('#', '0xFF')));
-    } catch (e) {
-      return Colors.grey;
-    }
+  Color _getColorFromString(BuildContext context, String? colorHex) {
+    return PaletaPasteles.proyectoColorByMode(
+      colorHex,
+      Theme.of(context).brightness,
+    );
   }
 
   bool _isDeadlineProximo(DateTime fecha) {

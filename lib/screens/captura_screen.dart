@@ -5,7 +5,12 @@ import 'package:image_picker/image_picker.dart';
 import '../models/models.dart';
 import '../services/database_service.dart';
 import '../services/file_service.dart';
+import '../utils/app_snackbar.dart';
+import '../utils/estado_actividad_colors.dart';
 import '../utils/responsive.dart';
+
+/// Fondo de cards en Capturar (solo light mode).
+const _kCapturaCardBackgroundLight = Color(0xFFF7F7F7);
 
 /// Pantalla de captura rápida de actividades
 class CapturaScreen extends StatefulWidget {
@@ -27,6 +32,12 @@ class _CapturaScreenState extends State<CapturaScreen> {
   bool _isLoading = false;
   List<String> _archivosAdjuntos = []; // Lista de rutas de archivos
   final FileService _fileService = FileService();
+
+  Color? _capturaCardColor(BuildContext context) {
+    return Theme.of(context).brightness == Brightness.light
+        ? _kCapturaCardBackgroundLight
+        : null;
+  }
 
   @override
   void initState() {
@@ -51,7 +62,7 @@ class _CapturaScreenState extends State<CapturaScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al cargar proyectos: $e')),
+          AppSnackBar.error('Error al cargar proyectos: $e'),
         );
       }
     }
@@ -65,9 +76,8 @@ class _CapturaScreenState extends State<CapturaScreen> {
     // Si es Programado, debe tener fecha
     if (_estadoDestino == EstadoActividad.programado && _fechaObjetivo == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Las actividades programadas requieren una fecha objetivo'),
-          backgroundColor: Colors.orange,
+        AppSnackBar.aviso(
+          'Las actividades programadas requieren una fecha objetivo',
         ),
       );
       return;
@@ -129,10 +139,7 @@ class _CapturaScreenState extends State<CapturaScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Actividad creada exitosamente'),
-            backgroundColor: Colors.green,
-          ),
+          AppSnackBar.exito('Actividad creada exitosamente'),
         );
         
         // Limpiar formulario
@@ -148,10 +155,7 @@ class _CapturaScreenState extends State<CapturaScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error al guardar: $e'),
-            backgroundColor: Colors.red,
-          ),
+          AppSnackBar.error('Error al guardar: $e'),
         );
       }
     } finally {
@@ -174,7 +178,7 @@ class _CapturaScreenState extends State<CapturaScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al seleccionar imagen: $e')),
+          AppSnackBar.error('Error al seleccionar imagen: $e'),
         );
       }
     }
@@ -192,7 +196,7 @@ class _CapturaScreenState extends State<CapturaScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al seleccionar archivo: $e')),
+          AppSnackBar.error('Error al seleccionar archivo: $e'),
         );
       }
     }
@@ -228,7 +232,6 @@ class _CapturaScreenState extends State<CapturaScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isTablet = Responsive.isTablet(context);
     final maxWidth = Responsive.getMaxContentWidth(context);
     
     return Scaffold(
@@ -280,6 +283,7 @@ class _CapturaScreenState extends State<CapturaScreen> {
                 
                 // Estado destino
                 Card(
+                  color: _capturaCardColor(context),
                   child: Padding(
                     padding: const EdgeInsets.all(16.0),
                     child: Column(
@@ -290,75 +294,11 @@ class _CapturaScreenState extends State<CapturaScreen> {
                           style: Theme.of(context).textTheme.titleSmall,
                         ),
                         const SizedBox(height: 8),
-                        isTablet
-                            ? Wrap(
-                                spacing: 8,
-                                runSpacing: 8,
-                                children: _buildEstadoButtons(),
-                              )
-                            : SizedBox(
-                                height: 50,
-                                child: ListView.builder(
-                                  scrollDirection: Axis.horizontal,
-                                  itemCount: EstadoActividad.values.length,
-                                  itemBuilder: (context, index) {
-                                    final estado = EstadoActividad.values[index];
-                                    final isSelected = estado == _estadoDestino;
-                                    IconData icon;
-                                    switch (estado) {
-                                      case EstadoActividad.bandeja:
-                                        icon = Icons.inbox;
-                                        break;
-                                      case EstadoActividad.hoy:
-                                        icon = Icons.today;
-                                        break;
-                                      case EstadoActividad.manana:
-                                        icon = Icons.event;
-                                        break;
-                                      case EstadoActividad.programado:
-                                        icon = Icons.calendar_today;
-                                        break;
-                                      case EstadoActividad.pendientes:
-                                        icon = Icons.pause_circle;
-                                        break;
-                                      default:
-                                        icon = Icons.circle;
-                                    }
-                                    return Padding(
-                                      padding: const EdgeInsets.only(right: 8.0),
-                                      child: FilterChip(
-                                        selected: isSelected,
-                                        label: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Icon(icon, size: 18),
-                                            const SizedBox(width: 4),
-                                            Text(estado.nombre),
-                                          ],
-                                        ),
-                                        onSelected: (selected) {
-                                          if (selected) {
-                                            setState(() {
-                                              _estadoDestino = estado;
-                                              if (_estadoDestino != EstadoActividad.programado) {
-                                                _fechaObjetivo = null;
-                                              }
-                                            });
-                                          }
-                                        },
-                                        selectedColor: Theme.of(context).colorScheme.primaryContainer,
-                                        checkmarkColor: Theme.of(context).colorScheme.onPrimaryContainer,
-                                        labelStyle: TextStyle(
-                                          color: isSelected
-                                              ? Theme.of(context).colorScheme.onPrimaryContainer
-                                              : Theme.of(context).colorScheme.onSurface,
-                                        ),
-                                        padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
-                                      ),
-                                    );
-                                  },
-                                ),
-                              ),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: _buildEstadoButtons(),
+                        ),
                       ],
                     ),
                   ),
@@ -368,6 +308,7 @@ class _CapturaScreenState extends State<CapturaScreen> {
                 // Proyecto (opcional)
                 if (_proyectos.isNotEmpty)
                   Card(
+                    color: _capturaCardColor(context),
                     child: Padding(
                       padding: const EdgeInsets.all(16.0),
                       child: Column(
@@ -411,6 +352,7 @@ class _CapturaScreenState extends State<CapturaScreen> {
                 // Fecha objetivo (si es Programado)
                 if (_estadoDestino == EstadoActividad.programado) ...[
                   Card(
+                    color: _capturaCardColor(context),
                     child: Padding(
                       padding: const EdgeInsets.all(16.0),
                       child: Column(
@@ -452,6 +394,7 @@ class _CapturaScreenState extends State<CapturaScreen> {
                 
                 // Archivos adjuntos
                 Card(
+                  color: _capturaCardColor(context),
                   child: Padding(
                     padding: const EdgeInsets.all(16.0),
                     child: Column(
@@ -521,24 +464,43 @@ class _CapturaScreenState extends State<CapturaScreen> {
 
   List<Widget> _buildEstadoButtons() {
     return [
-      _buildEstadoChip(EstadoActividad.bandeja, Icons.inbox),
-      _buildEstadoChip(EstadoActividad.hoy, Icons.today),
-      _buildEstadoChip(EstadoActividad.manana, Icons.event),
-      _buildEstadoChip(EstadoActividad.programado, Icons.calendar_today),
-      _buildEstadoChip(EstadoActividad.pendientes, Icons.pause_circle),
+      _buildEstadoChip(EstadoActividad.bandeja, Icons.inbox_outlined),
+      _buildEstadoChip(EstadoActividad.hoy, Icons.today_outlined),
+      _buildEstadoChip(EstadoActividad.manana, Icons.event_outlined),
+      _buildEstadoChip(EstadoActividad.programado, Icons.schedule_outlined),
+      _buildEstadoChip(EstadoActividad.pendientes, Icons.pause_circle_outline),
     ];
   }
 
   Widget _buildEstadoChip(EstadoActividad estado, IconData icon) {
+    final brightness = Theme.of(context).brightness;
+    final isLight = brightness == Brightness.light;
     final isSelected = _estadoDestino == estado;
     final color = _getEstadoColor(estado);
+    // Light: texto/ícono claros al seleccionar. Dark: conserva suavidad legible.
+    final selectedForeground = isLight
+        ? const Color(0xFFF3F5FA)
+        : Color.lerp(color, const Color(0xFF1F2430), 0.82)!;
     
     return FilterChip(
       selected: isSelected,
+      showCheckmark: false,
       label: Text(estado.nombre),
-      avatar: Icon(icon, size: 18, color: isSelected ? Colors.white : color),
+      labelStyle: TextStyle(
+        color: isSelected ? selectedForeground : color,
+        fontWeight: FontWeight.w600,
+      ),
+      avatar: Icon(
+        icon,
+        size: 18,
+        color: isSelected ? selectedForeground : color,
+      ),
       selectedColor: color,
-      checkmarkColor: Colors.white,
+      elevation: isLight ? 0 : null,
+      pressElevation: isLight ? 0 : null,
+      shadowColor: isLight ? Colors.transparent : null,
+      selectedShadowColor: isLight ? Colors.transparent : null,
+      surfaceTintColor: isLight ? Colors.transparent : null,
       onSelected: (selected) {
         setState(() {
           _estadoDestino = estado;
@@ -551,19 +513,9 @@ class _CapturaScreenState extends State<CapturaScreen> {
   }
 
   Color _getEstadoColor(EstadoActividad estado) {
-    switch (estado) {
-      case EstadoActividad.bandeja:
-        return Colors.grey;
-      case EstadoActividad.hoy:
-        return Colors.blue;
-      case EstadoActividad.manana:
-        return Colors.orange;
-      case EstadoActividad.programado:
-        return Colors.purple;
-      case EstadoActividad.pendientes:
-        return Colors.red;
-      case EstadoActividad.completada:
-        return Colors.green;
-    }
+    return EstadoActividadColors.forEstado(
+      estado,
+      brightness: Theme.of(context).brightness,
+    );
   }
 }

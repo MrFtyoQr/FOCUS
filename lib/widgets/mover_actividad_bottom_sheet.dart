@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/models.dart';
+import '../utils/estado_actividad_colors.dart';
 
 /// Bottom sheet para mover una actividad entre estados
 class MoverActividadBottomSheet extends StatelessWidget {
@@ -77,7 +78,7 @@ class MoverActividadBottomSheet extends StatelessWidget {
   }
 
   Widget _buildOpcionEstado(BuildContext context, EstadoActividad estado) {
-    final color = _getEstadoColor(estado);
+    final color = _getEstadoColor(context, estado);
     final icon = _getEstadoIcon(estado);
 
     return Card(
@@ -86,7 +87,7 @@ class MoverActividadBottomSheet extends StatelessWidget {
         leading: Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
+            color: color.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Icon(icon, color: color, size: 24),
@@ -111,37 +112,27 @@ class MoverActividadBottomSheet extends StatelessWidget {
     );
   }
 
-  Color _getEstadoColor(EstadoActividad estado) {
-    switch (estado) {
-      case EstadoActividad.bandeja:
-        return Colors.grey;
-      case EstadoActividad.hoy:
-        return Colors.blue;
-      case EstadoActividad.manana:
-        return Colors.orange;
-      case EstadoActividad.programado:
-        return Colors.purple;
-      case EstadoActividad.pendientes:
-        return Colors.red;
-      case EstadoActividad.completada:
-        return Colors.green;
-    }
+  Color _getEstadoColor(BuildContext context, EstadoActividad estado) {
+    return EstadoActividadColors.forEstado(
+      estado,
+      brightness: Theme.of(context).brightness,
+    );
   }
 
   IconData _getEstadoIcon(EstadoActividad estado) {
     switch (estado) {
       case EstadoActividad.bandeja:
-        return Icons.inbox;
+        return Icons.inbox_outlined;
       case EstadoActividad.hoy:
-        return Icons.today;
+        return Icons.today_outlined;
       case EstadoActividad.manana:
-        return Icons.event;
+        return Icons.event_outlined;
       case EstadoActividad.programado:
-        return Icons.calendar_today;
+        return Icons.schedule_outlined;
       case EstadoActividad.pendientes:
-        return Icons.pause_circle;
+        return Icons.pause_circle_outline;
       case EstadoActividad.completada:
-        return Icons.check_circle;
+        return Icons.star_outline;
     }
   }
 }
