@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../data/project_repository.dart';
 import '../providers/projects_provider.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../../../core/utils/responsive.dart';
@@ -102,59 +103,101 @@ class ProjectsScreen extends ConsumerWidget {
   }
 
   Future<void> _showCreateDialog(BuildContext context, WidgetRef ref) async {
-    final titleCtrl = TextEditingController();
-    final descCtrl  = TextEditingController();
-
     await showDialog<void>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Nuevo proyecto'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: titleCtrl,
-              autofocus: true,
-              decoration: const InputDecoration(
-                labelText: 'Nombre *',
-                border: OutlineInputBorder(
-                    borderRadius: BorderRadius.all(Radius.circular(12))),
-              ),
+      builder: (_) => _CreateProjectDialog(
+        onCreated: () {
+          ref.invalidate(projectsProvider);
+        },
+        repositoryReader: () => ref.read(projectRepositoryProvider),
+      ),
+    );
+  }
+}
+
+// Diálogo como StatefulWidget para gestión correcta del ciclo de vida
+class _CreateProjectDialog extends StatefulWidget {
+  final VoidCallback onCreated;
+  final ProjectRepository Function() repositoryReader;
+
+  const _CreateProjectDialog({
+    required this.onCreated,
+    required this.repositoryReader,
+  });
+
+  @override
+  State<_CreateProjectDialog> createState() => _CreateProjectDialogState();
+}
+
+class _CreateProjectDialogState extends State<_CreateProjectDialog> {
+  final _titleCtrl = TextEditingController();
+  final _descCtrl  = TextEditingController();
+  bool  _loading   = false;
+
+  @override
+  void dispose() {
+    _titleCtrl.dispose();
+    _descCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (_titleCtrl.text.trim().isEmpty) return;
+    setState(() => _loading = true);
+    try {
+      await widget.repositoryReader().createProject(
+        name:        _titleCtrl.text.trim(),
+        description: _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
+      );
+      widget.onCreated();
+      if (mounted) Navigator.of(context).pop();
+    } catch (_) {
+      setState(() => _loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Nuevo proyecto'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(
+            controller: _titleCtrl,
+            autofocus: true,
+            decoration: const InputDecoration(
+              labelText: 'Nombre *',
+              border: OutlineInputBorder(
+                  borderRadius: BorderRadius.all(Radius.circular(12))),
             ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: descCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Descripción (opcional)',
-                border: OutlineInputBorder(
-                    borderRadius: BorderRadius.all(Radius.circular(12))),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Cancelar'),
           ),
-          FilledButton(
-            onPressed: () async {
-              if (titleCtrl.text.trim().isEmpty) return;
-              await ref.read(projectRepositoryProvider).createProject(
-                    name: titleCtrl.text.trim(),
-                    description: descCtrl.text.trim().isEmpty
-                        ? null : descCtrl.text.trim(),
-                  );
-              ref.invalidate(projectsProvider);
-              if (ctx.mounted) Navigator.of(ctx).pop();
-            },
-            child: const Text('Crear'),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _descCtrl,
+            decoration: const InputDecoration(
+              labelText: 'Descripción (opcional)',
+              border: OutlineInputBorder(
+                  borderRadius: BorderRadius.all(Radius.circular(12))),
+            ),
           ),
         ],
       ),
+      actions: [
+        TextButton(
+          onPressed: _loading ? null : () => Navigator.of(context).pop(),
+          child: const Text('Cancelar'),
+        ),
+        FilledButton(
+          onPressed: _loading ? null : _submit,
+          child: _loading
+              ? const SizedBox(
+                  width: 18, height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Text('Crear'),
+        ),
+      ],
     );
-
-    titleCtrl.dispose();
-    descCtrl.dispose();
   }
 }

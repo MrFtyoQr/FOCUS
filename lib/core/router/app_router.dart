@@ -20,40 +20,71 @@ import '../../features/profile/screens/security_screen.dart';
 import '../storage/local_prefs.dart';
 import '../widgets/main_shell.dart';
 
+// ── Notifier que puente Riverpod → GoRouter refreshListenable ────────────────
+// GoRouter recibe un Listenable; cuando el estado de auth cambia,
+// solo re-evalúa el redirect actual sin reconstruir el árbol de widgets.
+class _AuthRouterNotifier extends ChangeNotifier {
+  AuthState _state;
+
+  _AuthRouterNotifier(this._state);
+
+  AuthState get authState => _state;
+
+  void update(AuthState next) {
+    // Solo notificar si el status cambia, para evitar rebuilds innecesarios.
+    if (_state.status != next.status) {
+      _state = next;
+      notifyListeners();
+    }
+  }
+}
+
+final _authRouterNotifierProvider =
+    ChangeNotifierProvider<_AuthRouterNotifier>((ref) {
+  final notifier = _AuthRouterNotifier(
+    const AuthState(status: AuthStatus.loading),
+  );
+  // ref.listen escucha sin reconstruir; delega al notifier del router.
+  ref.listen<AuthState>(authProvider, (_, next) => notifier.update(next));
+  return notifier;
+});
+
+// ── Router principal ──────────────────────────────────────────────────────────
 final routerProvider = Provider<GoRouter>((ref) {
-  final authState = ref.watch(authProvider);
+  final notifier = ref.watch(_authRouterNotifierProvider);
 
   return GoRouter(
-    initialLocation: '/',
+    initialLocation: '/login',
+    // refreshListenable re-evalúa el redirect cuando el notifier dispara,
+    // SIN crear un nuevo GoRouter (la pantalla actual no se reconstruye).
+    refreshListenable: notifier,
     redirect: (context, state) async {
-      final isLoading       = authState.status == AuthStatus.loading;
-      final isAuthenticated = authState.status == AuthStatus.authenticated;
-      final path            = state.matchedLocation;
+      final authStatus = notifier.authState.status;
+      final path       = state.matchedLocation;
 
-      if (isLoading) return '/loading';
+      if (authStatus == AuthStatus.loading) return '/loading';
+
+      final isAuthenticated = authStatus == AuthStatus.authenticated;
 
       // Deep link de invitación — siempre permitir
       if (path.startsWith('/invite/')) return null;
 
       if (!isAuthenticated) {
-        final allowed = ['/login', '/register'];
-        if (allowed.contains(path)) return null;
-        return '/login';
+        final allowed = {'/login', '/register', '/loading'};
+        return allowed.contains(path) ? null : '/login';
       }
 
       // Autenticado — revisar onboarding
       final onboardingDone = await LocalPrefs.instance.isOnboardingCompleted();
-      if (!onboardingDone && path != '/onboarding') {
-        return '/onboarding';
-      }
+      if (!onboardingDone && path != '/onboarding') return '/onboarding';
 
-      // Redirigir de login/register al home si ya autenticado
+      // Ya autenticado → salir de login/register al home
       if (path == '/login' || path == '/register') return '/';
 
       return null;
     },
     routes: [
-      // Loading splash
+      // Splash de carga
       GoRoute(
         path: '/loading',
         builder: (_, __) => const _LoadingScreen(),

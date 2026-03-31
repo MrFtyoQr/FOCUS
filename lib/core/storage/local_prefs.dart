@@ -16,6 +16,9 @@ class LocalPrefs {
   Future<void> setOnboardingCompleted() async =>
       (await _prefs).setBool(_onboardingKey, true);
 
+  Future<void> clearOnboarding() async =>
+      (await _prefs).remove(_onboardingKey);
+
   Future<bool> isBiometricEnabled() async =>
       (await _prefs).getBool(_biometricEnabled) ?? false;
 

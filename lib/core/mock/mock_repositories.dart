@@ -8,6 +8,9 @@ import '../../shared/models/activity.dart';
 import '../../shared/models/project.dart';
 import '../../shared/models/user.dart';
 import '../../shared/enums/activity_status.dart';
+import '../../shared/enums/user_role.dart';
+import '../../core/storage/secure_storage.dart';
+import '../../core/storage/local_prefs.dart';
 import 'mock_data.dart';
 
 // Simula latencia de red para que los estados loading/data se noten
@@ -18,24 +21,72 @@ Future<T> _fake<T>(T value, [int ms = 500]) async {
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
 class MockAuthRepository extends AuthRepository {
-  @override
-  Future<UserModel> login({required String email, required String password}) =>
-      _fake(MockData.currentUser, 800);
+  static const _mockAccess  = 'mock_access_token';
+  static const _mockRefresh = 'mock_refresh_token';
+
+  Future<void> _seedSession() async {
+    await SecureStorage.instance.saveTokens(
+      access: _mockAccess, refresh: _mockRefresh,
+    );
+    await LocalPrefs.instance.setOnboardingCompleted();
+  }
 
   @override
-  Future<UserModel> register({required String email, required String firstName,
-      required String lastName, required String password}) =>
-      _fake(MockData.currentUser, 800);
+  Future<UserModel> login({required String email, required String password}) async {
+    await Future.delayed(const Duration(milliseconds: 800));
+    // Acepta cualquier credencial en modo mock
+    await _seedSession();
+    return MockData.currentUser;
+  }
+
+  @override
+  Future<UserModel> register({
+    required String email, required String firstName,
+    required String lastName, required String password,
+  }) async {
+    await Future.delayed(const Duration(milliseconds: 800));
+    await _seedSession();
+    return MockData.currentUser;
+  }
 
   @override
   Future<UserModel> getMe() => _fake(MockData.currentUser, 300);
 
   @override
-  Future<void> logout() async => Future.delayed(const Duration(milliseconds: 300));
+  Future<void> logout() async {
+    await Future.delayed(const Duration(milliseconds: 300));
+    await SecureStorage.instance.clearAll();
+  }
 
   @override
   Future<Map<String, dynamic>> validateInviteToken(String token) =>
-      _fake({'email': 'invited@treetech.mx', 'role': 'trabajador'});
+      _fake({
+        'valid': true,
+        'email': 'invitado@treetech.mx',
+        'role': 'trabajador',
+        'area_id': 1,
+        'area_name': 'Desarrollo',
+        'invited_by': 'Carlos Mendoza',
+      });
+
+  @override
+  Future<UserModel> acceptInvitation({
+    required String token,
+    required String firstName,
+    required String lastName,
+    required String password,
+  }) async {
+    await Future.delayed(const Duration(milliseconds: 800));
+    await _seedSession();
+    // Retorna un usuario con el nombre que el invitado eligió
+    return UserModel(
+      id: 99, email: 'invitado@treetech.mx',
+      firstName: firstName, lastName: lastName,
+      role: UserRole.trabajador,
+      areaId: 1, areaName: 'Desarrollo',
+      onboardingCompleted: true,
+    );
+  }
 }
 
 // ── Activities ────────────────────────────────────────────────────────────────
@@ -214,4 +265,10 @@ class MockStatsRepository extends StatsRepository {
   Future<Map<String, dynamic>> getAreaStats()         => _fake(MockData.areaStats);
   @override
   Future<Map<String, dynamic>> getAreaDetailStats(int areaId) => _fake(MockData.areaStats);
+  @override
+  Future<List<Map<String, dynamic>>> getWorkerStats() =>
+      _fake(MockData.workerStats);
+  @override
+  Future<List<Map<String, dynamic>>> getAllAreasStats() =>
+      _fake(MockData.allAreasStats);
 }

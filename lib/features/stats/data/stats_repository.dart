@@ -18,4 +18,20 @@ class StatsRepository {
     final response = await _api.get(ApiEndpoints.statsAreaDetail(areaId));
     return response.data as Map<String, dynamic>;
   }
+
+  /// Stats de cada trabajador del área — para AdminArea
+  Future<List<Map<String, dynamic>>> getWorkerStats() async {
+    final response = await _api.get('${ApiEndpoints.statsArea}/workers/');
+    return (response.data as List)
+        .map((e) => e as Map<String, dynamic>)
+        .toList();
+  }
+
+  /// Stats de todas las áreas — para SuperAdmin
+  Future<List<Map<String, dynamic>>> getAllAreasStats() async {
+    final response = await _api.get('${ApiEndpoints.statsArea}/all/');
+    return (response.data as List)
+        .map((e) => e as Map<String, dynamic>)
+        .toList();
+  }
 }

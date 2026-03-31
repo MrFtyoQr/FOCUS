@@ -154,7 +154,7 @@ class MockData {
     ),
   ];
 
-  // ── Stats ─────────────────────────────────────────────────────────────────
+  // ── Stats personales ──────────────────────────────────────────────────────
   static final myStats = <String, dynamic>{
     'total': 45,
     'completed': 38,
@@ -164,11 +164,66 @@ class MockData {
     'avg_completion_days': 2.3,
   };
 
+  // ── Stats de área (para adminArea) ────────────────────────────────────────
   static final areaStats = <String, dynamic>{
     'area_name': 'Desarrollo',
-    'members': 5,
-    'total': 120,
-    'completed': 89,
-    'completion_rate': 74.2,
+    'members': 4,
+    'total': 74,
+    'completed': 58,
+    'pending': 10,
+    'overdue': 6,
+    'completion_rate': 78.4,
   };
+
+  // ── Stats por trabajador (para adminArea) ─────────────────────────────────
+  static final workerStats = <Map<String, dynamic>>[
+    {
+      'user_id': 1, 'name': 'Carlos Mendoza', 'role': 'adminArea',
+      'total': 20, 'completed': 17, 'pending': 2, 'overdue': 1,
+      'completion_rate': 85.0,
+    },
+    {
+      'user_id': 2, 'name': 'Ana García', 'role': 'trabajador',
+      'total': 18, 'completed': 15, 'pending': 2, 'overdue': 1,
+      'completion_rate': 83.3,
+    },
+    {
+      'user_id': 3, 'name': 'Luis Torres', 'role': 'trabajador',
+      'total': 22, 'completed': 19, 'pending': 3, 'overdue': 0,
+      'completion_rate': 86.4,
+    },
+    {
+      'user_id': 4, 'name': 'María Pérez', 'role': 'trabajador',
+      'total': 14, 'completed': 7, 'pending': 5, 'overdue': 2,
+      'completion_rate': 50.0,
+    },
+  ];
+
+  // ── Stats por área (para superAdmin) ─────────────────────────────────────
+  static final allAreasStats = <Map<String, dynamic>>[
+    {
+      'area_id': 1, 'area_name': 'Desarrollo',
+      'admin_name': 'Carlos Mendoza',
+      'members': 4, 'total': 74, 'completed': 58, 'overdue': 6,
+      'completion_rate': 78.4,
+    },
+    {
+      'area_id': 2, 'area_name': 'Diseño',
+      'admin_name': 'Roberto Sánchez',
+      'members': 3, 'total': 35, 'completed': 28, 'overdue': 3,
+      'completion_rate': 80.0,
+    },
+    {
+      'area_id': 3, 'area_name': 'Marketing',
+      'admin_name': 'Sofía López',
+      'members': 5, 'total': 52, 'completed': 34, 'overdue': 9,
+      'completion_rate': 65.4,
+    },
+    {
+      'area_id': 4, 'area_name': 'Ventas',
+      'admin_name': 'Diego Ramírez',
+      'members': 6, 'total': 90, 'completed': 81, 'overdue': 2,
+      'completion_rate': 90.0,
+    },
+  ];
 }

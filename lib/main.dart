@@ -3,8 +3,8 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/api/api_client.dart';
 import 'core/router/app_router.dart';
-import 'core/storage/local_prefs.dart';
 import 'core/storage/secure_storage.dart';
+import 'core/storage/local_prefs.dart';
 import 'core/theme/app_theme.dart';
 import 'core/mock/mock_repositories.dart';
 import 'features/auth/providers/auth_provider.dart';
@@ -21,12 +21,9 @@ Future<void> main() async {
   final useMock = dotenv.env['USE_MOCK'] == 'true';
 
   if (useMock) {
-    // Pre-seed para que el flujo de auth funcione sin backend
-    await SecureStorage.instance.saveTokens(
-      access:  'mock_access_token',
-      refresh: 'mock_refresh_token',
-    );
-    await LocalPrefs.instance.setOnboardingCompleted();
+    // Siempre limpiar sesión al arrancar en mock para forzar el flujo de login.
+    await SecureStorage.instance.clearAll();
+    await LocalPrefs.instance.clearOnboarding();
   } else {
     ApiClient.instance.initialize();
   }
