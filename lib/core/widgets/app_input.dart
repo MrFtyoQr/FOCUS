@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_colors.dart';
 
 class AppInput extends StatelessWidget {
@@ -41,6 +42,7 @@ class AppInput extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final accent = Theme.of(context).colorScheme.primary;
     return TextFormField(
       controller: controller,
       obscureText: obscureText,
@@ -52,8 +54,11 @@ class AppInput extends StatelessWidget {
       validator: validator,
       onTap: onTap,
       autofocus: autofocus,
-      style: const TextStyle(
-          color: AppColors.textPrimary, fontSize: 14),
+      style: GoogleFonts.inter(
+        fontSize: 14,
+        fontWeight: FontWeight.w400,
+        color: AppColors.textPrimary,
+      ),
       decoration: InputDecoration(
         labelText: labelText,
         hintText: hintText,
@@ -66,8 +71,16 @@ class AppInput extends StatelessWidget {
         suffix: suffix,
         filled: true,
         fillColor: AppColors.surface,
-        labelStyle: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
-        hintStyle: const TextStyle(color: AppColors.textTertiary, fontSize: 14),
+        labelStyle: GoogleFonts.inter(
+          fontSize: 13,
+          fontWeight: FontWeight.w500,
+          color: AppColors.textSecondary,
+        ),
+        hintStyle: GoogleFonts.inter(
+          fontSize: 14,
+          fontWeight: FontWeight.w400,
+          color: AppColors.textTertiary,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
           borderSide: const BorderSide(color: AppColors.surfaceBorder, width: 1),
@@ -78,7 +91,7 @@ class AppInput extends StatelessWidget {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: AppColors.purple, width: 1.5),
+          borderSide: BorderSide(color: accent, width: 1.5),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),

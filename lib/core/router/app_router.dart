@@ -9,6 +9,7 @@ import '../../features/auth/screens/biometric_screen.dart';
 import '../../features/auth/screens/invite_screen.dart';
 import '../../features/dashboard/screens/dashboard_screen.dart';
 import '../../features/dashboard/screens/activity_detail_screen.dart';
+import '../../features/dashboard/screens/historial_screen.dart';
 import '../../features/capture/screens/capture_screen.dart';
 import '../../features/projects/screens/projects_screen.dart';
 import '../../features/projects/screens/project_detail_screen.dart';
@@ -122,6 +123,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/capture',
             builder: (_, __) => const CaptureScreen(),
+          ),
+          GoRoute(
+            path: '/historial',
+            builder: (_, __) => const HistorialScreen(),
           ),
           GoRoute(
             path: '/projects',

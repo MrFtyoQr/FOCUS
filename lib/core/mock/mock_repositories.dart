@@ -1,4 +1,7 @@
 import 'dart:async';
+
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+
 import '../../features/auth/data/auth_repository.dart';
 import '../../features/dashboard/data/activity_repository.dart';
 import '../../features/projects/data/project_repository.dart';
@@ -23,6 +26,68 @@ class MockAuthRepository extends AuthRepository {
   static const _mockAccess  = 'mock_access_token';
   static const _mockRefresh = 'mock_refresh_token';
 
+  /// Usuario devuelto por el último login mock (para que `getMe` coincida con la sesión).
+  static UserModel? _sessionUser;
+
+  /// `MOCK_ACT_AS` en [app.env] fuerza el rol en mock sin depender del correo:
+  /// `super_admin` | `sa` | `admin_area` | `aa` | `trabajador` | `ta` | `personal`.
+  static UserModel? _mockUserForcedByEnv() {
+    final act = dotenv.env['MOCK_ACT_AS']?.trim().toLowerCase();
+    if (act == null || act.isEmpty) return null;
+    if (act == 'super_admin' || act == 'superadmin' || act == 'sa') {
+      return MockData.superAdminUser;
+    }
+    if (act == 'admin_area' || act == 'adminarea' || act == 'aa') {
+      return MockData.currentUser;
+    }
+    if (act == 'trabajador' || act == 'worker' || act == 'empleado' || act == 'ta') {
+      return MockData.teamMembers.firstWhere((u) => u.isTrabajador);
+    }
+    if (act == 'personal' || act == 'solo' || act == 'usuario') {
+      return MockData.personalOnlyUser;
+    }
+    return null;
+  }
+
+  /// Usuario efectivo de la sesión mock (crear actividad, asignaciones, etc.).
+  static UserModel get effectiveSessionUser =>
+      _sessionUser ?? _mockUserForcedByEnv() ?? MockData.currentUser;
+
+  /// Muestra en perfil el correo con el que se hizo login (mismo rol mock).
+  static UserModel _withLoginEmail(UserModel user, String rawEmail) {
+    final typed = rawEmail.trim();
+    if (typed.isEmpty || !user.isSuperAdmin) return user;
+    if (typed.toLowerCase() == user.email.toLowerCase()) return user;
+    return UserModel(
+      id: user.id,
+      email: typed,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      role: user.role,
+      areaId: user.areaId,
+      areaName: user.areaName,
+      biometricsEnabled: user.biometricsEnabled,
+      onboardingCompleted: user.onboardingCompleted,
+    );
+  }
+
+  static UserModel _userForEmail(String email) {
+    final forced = _mockUserForcedByEnv();
+    if (forced != null) return forced;
+
+    final e = email.toLowerCase().trim();
+    if (e == 'admin@focus.com' ||
+        e.contains('superadmin') ||
+        e.startsWith('sa@') ||
+        e.endsWith('@super.treetech.mx')) {
+      return MockData.superAdminUser;
+    }
+    if (e.startsWith('personal@') || e.contains('solo@')) {
+      return MockData.personalOnlyUser;
+    }
+    return MockData.currentUser;
+  }
+
   Future<void> _seedSession() async {
     await SecureStorage.instance.saveTokens(
       access: _mockAccess, refresh: _mockRefresh,
@@ -34,15 +99,21 @@ class MockAuthRepository extends AuthRepository {
   Future<UserModel> login({required String email, required String password}) async {
     await Future.delayed(const Duration(milliseconds: 800));
     await _seedSession();
-    return MockData.currentUser;
+    _sessionUser = _withLoginEmail(_userForEmail(email), email);
+    return _sessionUser!;
   }
 
   @override
-  Future<UserModel> getMe() => _fake(MockData.currentUser, 300);
+  Future<UserModel> getMe() {
+    final forced = _mockUserForcedByEnv();
+    final user = _sessionUser ?? forced ?? MockData.currentUser;
+    return _fake(user, 300);
+  }
 
   @override
   Future<void> logout() async {
     await Future.delayed(const Duration(milliseconds: 300));
+    _sessionUser = null;
     await SecureStorage.instance.clearAll();
   }
 
@@ -77,6 +148,7 @@ class MockActivityRepository extends ActivityRepository {
     String? status,
     String? projectId,
     String? areaId,
+    String? scope,
   }) async {
     await Future.delayed(const Duration(milliseconds: 400));
     var list = _activities.toList();
@@ -104,18 +176,19 @@ class MockActivityRepository extends ActivityRepository {
   }) async {
     await Future.delayed(const Duration(milliseconds: 600));
     final now = DateTime.now();
+    final me = MockAuthRepository.effectiveSessionUser;
     final activity = ActivityModel(
       id: 'uuid-act-$_nextIdx',
       title: title,
       description: description ?? '',
       status: ActivityStatus.fromString(status),
-      ownerId: MockData.currentUser.id,
-      ownerName: MockData.currentUser.fullName,
+      ownerId: me.id,
+      ownerName: me.fullName,
       projectId: projectId,
       projectName: projectId != null
           ? MockData.projects.firstWhere((p) => p.id == projectId).name
           : null,
-      areaId: areaId ?? MockData.currentUser.areaId,
+      areaId: areaId ?? me.areaId,
       targetDate: targetDate,
       createdAt: now,
       updatedAt: now,
@@ -123,6 +196,11 @@ class MockActivityRepository extends ActivityRepository {
     _nextIdx++;
     _activities.add(activity);
     return activity;
+  }
+
+  @override
+  Future<void> uploadAttachment(String id, String filePath, String fileName) async {
+    await Future.delayed(const Duration(milliseconds: 200));
   }
 
   @override
@@ -159,7 +237,8 @@ class MockActivityRepository extends ActivityRepository {
       status: src.status,
       ownerId: src.ownerId, ownerName: src.ownerName,
       assignedToId: assignedToId, assignedToName: member.fullName,
-      assignedById: MockData.currentUser.id, assignedByName: MockData.currentUser.fullName,
+      assignedById: MockAuthRepository.effectiveSessionUser.id,
+      assignedByName: MockAuthRepository.effectiveSessionUser.fullName,
       projectId: src.projectId, projectName: src.projectName,
       areaId: src.areaId, areaName: src.areaName,
       targetDate: src.targetDate,
@@ -167,6 +246,107 @@ class MockActivityRepository extends ActivityRepository {
     );
     _activities[idx] = updated;
     return updated;
+  }
+
+  @override
+  Future<ActivityModel> unassignActivity(String id) async {
+    await Future.delayed(const Duration(milliseconds: 300));
+    final idx = _activities.indexWhere((a) => a.id == id);
+    final src = _activities[idx];
+    final updated = ActivityModel(
+      id: src.id, title: src.title, description: src.description,
+      status: src.status,
+      ownerId: src.ownerId, ownerName: src.ownerName,
+      assignedToId: null, assignedToName: null,
+      assignedById: src.assignedById, assignedByName: src.assignedByName,
+      projectId: src.projectId, projectName: src.projectName,
+      areaId: src.areaId, areaName: src.areaName,
+      targetDate: src.targetDate,
+      completedAt: src.completedAt,
+      createdAt: src.createdAt, updatedAt: DateTime.now(),
+    );
+    _activities[idx] = updated;
+    return updated;
+  }
+
+  @override
+  Future<ActivityModel> updateActivity(String id, Map<String, dynamic> data) async {
+    await Future.delayed(const Duration(milliseconds: 400));
+    final idx = _activities.indexWhere((a) => a.id == id);
+    final s = _activities[idx];
+    final title = data['title'] as String? ?? s.title;
+    final description = data['description'] as String? ?? s.description;
+    final status = data['status'] != null
+        ? ActivityStatus.fromString(data['status'] as String)
+        : s.status;
+    final projectId = data.containsKey('project')
+        ? data['project'] as String?
+        : s.projectId;
+    DateTime? targetDate = s.targetDate;
+    if (data.containsKey('target_date')) {
+      final td = data['target_date'];
+      if (td == null) {
+        targetDate = null;
+      } else if (td is String) {
+        targetDate = DateTime.tryParse(td);
+      }
+    }
+    String? projectName = s.projectName;
+    if (projectId != null) {
+      try {
+        projectName =
+            MockData.projects.firstWhere((p) => p.id == projectId).name;
+      } catch (_) {
+        projectName = s.projectName;
+      }
+    } else {
+      projectName = null;
+    }
+    final updated = ActivityModel(
+      id: s.id,
+      title: title,
+      description: description,
+      status: status,
+      ownerId: s.ownerId,
+      ownerName: s.ownerName,
+      assignedToId: s.assignedToId,
+      assignedToName: s.assignedToName,
+      assignedById: s.assignedById,
+      assignedByName: s.assignedByName,
+      projectId: projectId,
+      projectName: projectName,
+      areaId: s.areaId,
+      areaName: s.areaName,
+      targetDate: targetDate,
+      completedAt: s.completedAt,
+      createdAt: s.createdAt,
+      updatedAt: DateTime.now(),
+    );
+    _activities[idx] = updated;
+    return updated;
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> getAttachments(String id) async {
+    await Future.delayed(const Duration(milliseconds: 200));
+    return [];
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> getLogs(String id) async {
+    await Future.delayed(const Duration(milliseconds: 200));
+    return [
+      {
+        'type': 'create',
+        'description': 'Actividad registrada (mock)',
+        'timestamp': DateTime.now().toIso8601String(),
+      },
+    ];
+  }
+
+  @override
+  Future<void> deleteAttachment(String actId, String attId) async {
+    await Future.delayed(const Duration(milliseconds: 200));
   }
 
   @override
@@ -212,14 +392,31 @@ class MockProjectRepository extends ProjectRepository {
     String? description,
     String status = 'active',
     String? targetDate,
+    String? color,
   }) async {
     await Future.delayed(const Duration(milliseconds: 600));
+    String? resolvedAreaName;
+    String? resolvedAdminName;
+    for (final row in MockData.allAreasStats) {
+      if (row['area_id'] == areaId) {
+        resolvedAreaName = row['area_name'] as String?;
+        resolvedAdminName = row['admin_name'] as String?;
+        break;
+      }
+    }
+    resolvedAreaName ??= MockData.currentUser.areaName;
+    final me = MockAuthRepository.effectiveSessionUser;
     final p = ProjectModel(
       id: 'uuid-proj-${_projects.length + 10}',
-      name: name, description: description ?? '',
-      status: status, areaId: areaId,
-      areaName: MockData.currentUser.areaName,
+      name: name,
+      description: description ?? '',
+      status: status,
+      areaId: areaId,
+      areaName: resolvedAreaName,
+      areaAdminName: resolvedAdminName,
+      createdById: areaId == null || areaId.isEmpty ? me.id : null,
       createdAt: DateTime.now(),
+      color: color ?? '#7F77DD',
     );
     _projects.add(p);
     return p;
@@ -236,6 +433,10 @@ class MockProjectRepository extends ProjectRepository {
 class MockTeamRepository extends TeamRepository {
   @override
   Future<List<UserModel>> getTeamMembers() => _fake(MockData.teamMembers);
+
+  @override
+  Future<List<UserModel>> getAreaAdmins() =>
+      _fake(MockData.areaAdminsList);
 
   @override
   Future<List<UserModel>> getAreaMembers(String areaId) =>
@@ -260,7 +461,7 @@ class MockStatsRepository extends StatsRepository {
 
   @override
   Future<Map<String, dynamic>> getAreaStats(String areaId) =>
-      _fake(MockData.areaStats);
+      _fake(MockData.buildAreaStatsForOrphans(areaId));
 
   @override
   Future<List<Map<String, dynamic>>> getWorkerStats() =>

@@ -44,6 +44,10 @@ class ActivityModel {
   bool get isAssigned  => assignedById != null;
   bool get isCompleted => status == ActivityStatus.completada;
 
+  /// Sin proyecto enlazado (independientes / fuera de proyectos).
+  bool get isSinProyecto =>
+      projectId == null || projectId!.isEmpty;
+
   factory ActivityModel.fromJson(Map<String, dynamic> json) => ActivityModel(
     id:             json['id'] as String,
     title:          (json['title'] ?? '') as String,

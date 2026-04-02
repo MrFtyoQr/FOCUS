@@ -38,6 +38,7 @@ class ProjectRepository {
     String? description,
     String status = 'active',
     String? targetDate,
+    String? color,
   }) async {
     final response = await _api.post(ApiEndpoints.projects, data: {
       'name':   name,
@@ -45,6 +46,7 @@ class ProjectRepository {
       if (areaId      != null) 'area':         areaId,
       if (description != null) 'description':  description,
       if (targetDate  != null) 'target_date':  targetDate,
+      if (color       != null) 'color':        color,
     });
     return ProjectModel.fromJson(response.data as Map<String, dynamic>);
   }

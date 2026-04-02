@@ -20,7 +20,8 @@ class SecurityScreen extends StatelessWidget {
         padding: const EdgeInsets.all(20),
         children: [
           ListTile(
-            leading: const Icon(Icons.fingerprint, color: AppColors.purple),
+            leading: Icon(Icons.fingerprint,
+                color: Theme.of(context).colorScheme.primary),
             title: const Text('Biometría'),
             subtitle: const Text('Acceso con huella o Face ID'),
             trailing: const Icon(Icons.chevron_right),
@@ -29,8 +30,8 @@ class SecurityScreen extends StatelessWidget {
           ),
           const Divider(),
           ListTile(
-            leading: const Icon(Icons.lock_reset_outlined,
-                color: AppColors.purple),
+            leading: Icon(Icons.lock_reset_outlined,
+                color: Theme.of(context).colorScheme.primary),
             title: const Text('Cambiar contraseña'),
             trailing: const Icon(Icons.chevron_right),
             contentPadding: EdgeInsets.zero,

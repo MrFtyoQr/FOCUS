@@ -1,37 +1,61 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_slidable/flutter_slidable.dart';
 import '../../shared/models/activity.dart';
 import '../../shared/enums/activity_status.dart';
-import '../theme/app_colors.dart';
+import '../utils/activity_status_colors.dart';
+import '../utils/paleta_pasteles.dart';
 import '../theme/app_text_styles.dart';
 
 class ActivityCard extends StatelessWidget {
   final ActivityModel activity;
   final VoidCallback? onTap;
   final VoidCallback? onComplete;
+  /// Abre flujo para cambiar de estado (p. ej. bottom sheet «Mover»).
+  final VoidCallback? onMove;
+  /// Hex `#RRGGBB` del proyecto (opcional; mejora el chip sin tocar el modelo).
+  final String? projectColorHex;
 
   const ActivityCard({
     super.key,
     required this.activity,
     this.onTap,
     this.onComplete,
+    this.onMove,
+    this.projectColorHex,
   });
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final brightness = theme.brightness;
+    final statusColor = ActivityStatusColors.forStatus(
+      activity.status,
+      brightness: brightness,
+    );
+    final surface = scheme.surfaceContainerLow;
+    final borderColor = activity.isCompleted
+        ? statusColor.withValues(alpha: 0.35)
+        : scheme.outlineVariant;
+
+    final card = GestureDetector(
       onTap: onTap,
+      behavior: HitTestBehavior.deferToChild,
       child: Container(
-        margin: const EdgeInsets.only(bottom: 10),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: AppColors.surface,
+          color: surface,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: activity.isCompleted
-                ? AppColors.teal.withValues(alpha: 0.3)
-                : AppColors.surfaceBorder,
-            width: 0.5,
-          ),
+          border: Border.all(color: borderColor, width: 0.5),
+          boxShadow: brightness == Brightness.light
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.04),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : null,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -43,9 +67,11 @@ class ActivityCard extends StatelessWidget {
                     activity.title,
                     style: AppTextStyles.heading3.copyWith(
                       decoration: activity.isCompleted
-                          ? TextDecoration.lineThrough : null,
+                          ? TextDecoration.lineThrough
+                          : null,
                       color: activity.isCompleted
-                          ? AppColors.textSecondary : AppColors.textPrimary,
+                          ? scheme.onSurfaceVariant
+                          : scheme.onSurface,
                     ),
                   ),
                 ),
@@ -57,7 +83,9 @@ class ActivityCard extends StatelessWidget {
               const SizedBox(height: 4),
               Text(
                 activity.description,
-                style: AppTextStyles.bodySecondary,
+                style: AppTextStyles.bodySecondary.copyWith(
+                  color: scheme.onSurfaceVariant,
+                ),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -70,29 +98,83 @@ class ActivityCard extends StatelessWidget {
                   const SizedBox(width: 6),
                 ],
                 if (activity.projectName != null)
-                  _ProjectChip(name: activity.projectName!),
+                  _ProjectChip(
+                    name: activity.projectName!,
+                    colorHex: projectColorHex,
+                  ),
                 const Spacer(),
                 if (activity.targetDate != null)
                   Text(
                     _formatDate(activity.targetDate!),
-                    style: AppTextStyles.caption,
-                  ),
-                if (onComplete != null && !activity.isCompleted) ...[
-                  const SizedBox(width: 8),
-                  GestureDetector(
-                    onTap: onComplete,
-                    child: const Icon(
-                      Icons.check_circle_outline,
-                      size: 20,
-                      color: AppColors.teal,
+                    style: AppTextStyles.caption.copyWith(
+                      color: activity.status == ActivityStatus.programado
+                          ? ActivityStatusColors.forStatus(
+                              ActivityStatus.programado,
+                              brightness: brightness,
+                            )
+                          : scheme.onSurfaceVariant,
                     ),
                   ),
-                ],
               ],
             ),
           ],
         ),
       ),
+    );
+
+    final useSlidable = !activity.isCompleted &&
+        (onMove != null || onComplete != null);
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: useSlidable
+          ? Slidable(
+              key: ValueKey('slidable_${activity.id}'),
+              startActionPane: onComplete != null
+                  ? ActionPane(
+                      motion: const DrawerMotion(),
+                      extentRatio: 0.46,
+                      children: [
+                        SlidableAction(
+                          onPressed: (ctx) {
+                            Slidable.of(ctx)?.close();
+                            onComplete!();
+                          },
+                          backgroundColor: PaletaPasteles.slidableCompletarFondo(
+                              brightness),
+                          foregroundColor: PaletaPasteles
+                              .slidableCompletarPrimerPlano(brightness),
+                          icon: Icons.check_circle_outline,
+                          label: 'Completar',
+                          spacing: 4,
+                        ),
+                      ],
+                    )
+                  : null,
+              endActionPane: onMove != null
+                  ? ActionPane(
+                      motion: const DrawerMotion(),
+                      extentRatio: 0.38,
+                      children: [
+                        SlidableAction(
+                          onPressed: (ctx) {
+                            Slidable.of(ctx)?.close();
+                            onMove!();
+                          },
+                          backgroundColor:
+                              PaletaPasteles.slidableMoverFondo(brightness),
+                          foregroundColor: PaletaPasteles.slidableMoverPrimerPlano(
+                              brightness),
+                          icon: Icons.drive_file_move_outline,
+                          label: 'Mover',
+                          spacing: 4,
+                        ),
+                      ],
+                    )
+                  : null,
+              child: card,
+            )
+          : card,
     );
   }
 
@@ -108,7 +190,9 @@ class _StatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = AppColors.statusColor(status.name);
+    final brightness = Theme.of(context).brightness;
+    final color =
+        ActivityStatusColors.forStatus(status, brightness: brightness);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
@@ -117,7 +201,7 @@ class _StatusBadge extends StatelessWidget {
       ),
       child: Text(
         status.label,
-        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w500, color: color),
+        style: AppTextStyles.label.copyWith(color: color),
       ),
     );
   }
@@ -129,18 +213,17 @@ class _AssignedBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final c = scheme.primary;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
-        color: AppColors.purple.withValues(alpha: 0.15),
+        color: c.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
         'Asignada · $assignedBy',
-        style: const TextStyle(
-          fontSize: 10, fontWeight: FontWeight.w500,
-          color: AppColors.purpleLight,
-        ),
+        style: AppTextStyles.label.copyWith(color: c),
       ),
     );
   }
@@ -148,21 +231,22 @@ class _AssignedBadge extends StatelessWidget {
 
 class _ProjectChip extends StatelessWidget {
   final String name;
-  const _ProjectChip({required this.name});
+  final String? colorHex;
+  const _ProjectChip({required this.name, this.colorHex});
 
   @override
   Widget build(BuildContext context) {
+    final brightness = Theme.of(context).brightness;
+    final c = PaletaPasteles.proyectoColorByMode(colorHex, brightness);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
-        color: AppColors.teal.withValues(alpha: 0.15),
+        color: c.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(4),
       ),
       child: Text(
         name,
-        style: const TextStyle(
-          fontSize: 10, color: AppColors.teal, fontWeight: FontWeight.w500,
-        ),
+        style: AppTextStyles.label.copyWith(color: c),
       ),
     );
   }

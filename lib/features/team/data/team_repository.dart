@@ -13,6 +13,18 @@ class TeamRepository {
         .toList();
   }
 
+  /// Admins de área de toda la organización (vista Super Admin — Equipo).
+  Future<List<UserModel>> getAreaAdmins() async {
+    final response = await _api.get(
+      ApiEndpoints.users,
+      params: {'role': 'admin_area'},
+    );
+    final results = response.data['results'] as List? ?? response.data as List;
+    return results
+        .map((e) => UserModel.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
   Future<UserModel> getUserDetail(String userId) async {
     final response = await _api.get(ApiEndpoints.userDetail(userId));
     return UserModel.fromJson(response.data as Map<String, dynamic>);

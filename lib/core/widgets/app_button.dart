@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_text_styles.dart';
 
 enum AppButtonVariant { primary, secondary, danger, ghost }
 
@@ -23,13 +24,16 @@ class AppButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final bg = _background(scheme);
+    final fg = _foreground(scheme);
     final child = isLoading
         ? SizedBox(
             width: 20, height: 20,
             child: CircularProgressIndicator(
               strokeWidth: 2,
               valueColor: AlwaysStoppedAnimation<Color>(
-                _foreground,
+                fg,
               ),
             ),
           )
@@ -37,20 +41,14 @@ class AppButton extends StatelessWidget {
             ? Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(icon, size: 18, color: _foreground),
+                  Icon(icon, size: 18, color: fg),
                   const SizedBox(width: 8),
                   Text(label,
-                      style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                          color: _foreground)),
+                      style: AppTextStyles.button.copyWith(color: fg)),
                 ],
               )
             : Text(label,
-                style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    color: _foreground));
+                style: AppTextStyles.button.copyWith(color: fg));
 
     return SizedBox(
       width: width ?? double.infinity,
@@ -58,8 +56,8 @@ class AppButton extends StatelessWidget {
       child: ElevatedButton(
         onPressed: isLoading ? null : onPressed,
         style: ElevatedButton.styleFrom(
-          backgroundColor: _background,
-          foregroundColor: _foreground,
+          backgroundColor: bg,
+          foregroundColor: fg,
           elevation: 0,
           shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12)),
@@ -72,21 +70,29 @@ class AppButton extends StatelessWidget {
     );
   }
 
-  Color get _background {
+  Color _background(ColorScheme scheme) {
     switch (variant) {
-      case AppButtonVariant.primary:   return AppColors.purple;
-      case AppButtonVariant.secondary: return AppColors.surface;
-      case AppButtonVariant.danger:    return AppColors.red;
-      case AppButtonVariant.ghost:     return Colors.transparent;
+      case AppButtonVariant.primary:
+        return scheme.primary;
+      case AppButtonVariant.secondary:
+        return AppColors.surface;
+      case AppButtonVariant.danger:
+        return AppColors.red;
+      case AppButtonVariant.ghost:
+        return Colors.transparent;
     }
   }
 
-  Color get _foreground {
+  Color _foreground(ColorScheme scheme) {
     switch (variant) {
-      case AppButtonVariant.primary:   return Colors.white;
-      case AppButtonVariant.secondary: return AppColors.textPrimary;
-      case AppButtonVariant.danger:    return Colors.white;
-      case AppButtonVariant.ghost:     return AppColors.textSecondary;
+      case AppButtonVariant.primary:
+        return scheme.onPrimary;
+      case AppButtonVariant.secondary:
+        return AppColors.textPrimary;
+      case AppButtonVariant.danger:
+        return Colors.white;
+      case AppButtonVariant.ghost:
+        return AppColors.textSecondary;
     }
   }
 }

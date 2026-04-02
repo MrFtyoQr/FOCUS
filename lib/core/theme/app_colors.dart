@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../utils/activity_status_colors.dart';
+
 class AppColors {
   AppColors._();
 
@@ -13,10 +15,12 @@ class AppColors {
   static const textSecondary = Color(0xFF888780);
   static const textTertiary  = Color(0xFF5F5E5A);
 
-  // Acentos
-  static const purple      = Color(0xFF7F77DD);
-  static const purpleLight = Color(0xFFAFA9EC);
-  static const purpleDark  = Color(0xFF3C3489);
+  /// Mismos tonos que el estado «Hoy» ([EstadoActividadColors]).
+  static const primaryLight = EstadoActividadColors.hoyLight;
+  static const primaryDark = EstadoActividadColors.hoyDark;
+
+  /// Texto e iconos sobre [primaryDark] (contraste sobre el azul pastel de Hoy).
+  static const onPrimaryDark = Color(0xFF08202F);
 
   static const teal     = Color(0xFF1D9E75);
   static const tealDark = Color(0xFF0F6E56);

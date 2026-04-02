@@ -6,15 +6,18 @@ import '../../../shared/models/activity.dart';
 class ActivityRepository {
   final _api = ApiClient.instance;
 
+  /// [scope] reservado para API (`personal` | `team`); el cliente filtra con [activity_scope.dart] hasta que exista en backend.
   Future<List<ActivityModel>> getActivities({
     String? status,
     String? projectId,
     String? areaId,
+    String? scope,
   }) async {
     final params = <String, dynamic>{};
     if (status    != null) params['status']  = status;
     if (projectId != null) params['project'] = projectId;
     if (areaId    != null) params['area']    = areaId;
+    if (scope     != null) params['scope']   = scope;
 
     final response = await _api.get(ApiEndpoints.activities, params: params);
     final results  = response.data['results'] as List? ?? response.data as List;
@@ -72,6 +75,15 @@ class ActivityRepository {
     final response = await _api.patch(
       ApiEndpoints.activityAssign(id),
       data: {'assigned_to': assignedToId},
+    );
+    return ActivityModel.fromJson(response.data as Map<String, dynamic>);
+  }
+
+  /// Quita la asignación (`assigned_to: null`). Si el backend no lo acepta, ajustar aquí.
+  Future<ActivityModel> unassignActivity(String id) async {
+    final response = await _api.patch(
+      ApiEndpoints.activityAssign(id),
+      data: {'assigned_to': null},
     );
     return ActivityModel.fromJson(response.data as Map<String, dynamic>);
   }

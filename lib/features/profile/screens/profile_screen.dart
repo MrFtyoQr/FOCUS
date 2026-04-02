@@ -4,8 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../auth/providers/auth_provider.dart';
-import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../core/utils/activity_status_colors.dart';
+import '../../../shared/enums/activity_status.dart';
+import '../../../core/theme/theme_mode_provider.dart';
+import '../../../core/storage/local_prefs.dart';
 
 // Provider local para la ruta de la foto de perfil
 final _profilePhotoProvider = StateProvider<String?>((ref) => null);
@@ -17,6 +20,8 @@ class ProfileScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final user      = ref.watch(currentUserProvider);
     final photoPath = ref.watch(_profilePhotoProvider);
+    final scheme    = Theme.of(context).colorScheme;
+    final themeMode = ref.watch(themeModeProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Perfil')),
@@ -38,7 +43,7 @@ class ProfileScreen extends ConsumerWidget {
                               CircleAvatar(
                                 radius: 50,
                                 backgroundColor:
-                                    AppColors.purple.withValues(alpha: 0.2),
+                                    scheme.primary.withValues(alpha: 0.18),
                                 backgroundImage: photoPath != null
                                     ? FileImage(File(photoPath))
                                     : null,
@@ -47,10 +52,10 @@ class ProfileScreen extends ConsumerWidget {
                                         user.firstName.isNotEmpty
                                             ? user.firstName[0].toUpperCase()
                                             : '?',
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           fontSize: 36,
                                           fontWeight: FontWeight.bold,
-                                          color: AppColors.purple,
+                                          color: scheme.primary,
                                         ),
                                       )
                                     : null,
@@ -60,10 +65,10 @@ class ProfileScreen extends ConsumerWidget {
                                 child: Container(
                                   padding: const EdgeInsets.all(6),
                                   decoration: BoxDecoration(
-                                    color: AppColors.purple,
+                                    color: scheme.primary,
                                     shape: BoxShape.circle,
                                     border: Border.all(
-                                        color: AppColors.background, width: 2),
+                                        color: scheme.surface, width: 2),
                                   ),
                                   child: const Icon(
                                     Icons.camera_alt,
@@ -78,19 +83,27 @@ class ProfileScreen extends ConsumerWidget {
                         const SizedBox(height: 4),
                         TextButton(
                           onPressed: () => _pickPhoto(context, ref),
-                          child: const Text('Cambiar foto',
+                          child: Text('Cambiar foto',
                               style: TextStyle(
-                                  color: AppColors.purple, fontSize: 13)),
+                                  color: scheme.primary, fontSize: 13)),
                         ),
-                        Text(user.fullName, style: AppTextStyles.heading1),
+                        Text(
+                          user.fullName,
+                          style: AppTextStyles.heading1
+                              .copyWith(color: scheme.onSurface),
+                        ),
                         const SizedBox(height: 4),
-                        Text(user.email, style: AppTextStyles.bodySecondary),
+                        Text(
+                          user.email,
+                          style: AppTextStyles.bodySecondary
+                              .copyWith(color: scheme.onSurfaceVariant),
+                        ),
                         const SizedBox(height: 8),
                         Chip(
                           label: Text(user.role.label,
                               style: const TextStyle(fontSize: 12)),
                           backgroundColor:
-                              AppColors.purple.withValues(alpha: 0.15),
+                              scheme.primary.withValues(alpha: 0.12),
                         ),
                       ],
                     ),
@@ -120,10 +133,19 @@ class ProfileScreen extends ConsumerWidget {
                   const Divider(),
                   const SizedBox(height: 8),
 
+                  ListTile(
+                    leading: Icon(Icons.palette_outlined, color: scheme.primary),
+                    title: const Text('Apariencia'),
+                    subtitle: Text(_themeModeLabel(themeMode)),
+                    trailing: const Icon(Icons.chevron_right),
+                    contentPadding: EdgeInsets.zero,
+                    onTap: () => _showThemePicker(context, ref),
+                  ),
+                  const SizedBox(height: 4),
+
                   // ── Acciones ──────────────────────────────────────────
                   ListTile(
-                    leading: const Icon(Icons.lock_outline,
-                        color: AppColors.purple),
+                    leading: Icon(Icons.lock_outline, color: scheme.primary),
                     title: const Text('Seguridad y acceso'),
                     trailing: const Icon(Icons.chevron_right),
                     contentPadding: EdgeInsets.zero,
@@ -131,36 +153,97 @@ class ProfileScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 24),
 
-                  // ── Cerrar sesión ─────────────────────────────────────
+                  // ── Cerrar sesión (tono «Pendientes») ─────────────────
                   SizedBox(
                     width: double.infinity,
-                    child: OutlinedButton.icon(
-                      onPressed: () async {
-                        final confirmed =
-                            await _confirmLogout(context);
-                        if (confirmed && context.mounted) {
-                          await ref.read(authProvider.notifier).logout();
-                          if (context.mounted) context.go('/login');
-                        }
+                    child: Builder(
+                      builder: (ctx) {
+                        final pendientes =
+                            EstadoActividadColors.forEstadoConContexto(
+                          ctx,
+                          ActivityStatus.pendientes,
+                        );
+                        return OutlinedButton.icon(
+                          onPressed: () async {
+                            final confirmed =
+                                await _confirmLogout(ctx);
+                            if (confirmed && ctx.mounted) {
+                              await ref.read(authProvider.notifier).logout();
+                              if (ctx.mounted) ctx.go('/login');
+                            }
+                          },
+                          icon: Icon(Icons.logout, color: pendientes),
+                          label: Text(
+                            'Cerrar sesión',
+                            style: TextStyle(color: pendientes),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            minimumSize:
+                                const Size(double.infinity, 50),
+                            side: BorderSide(color: pendientes),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12)),
+                          ),
+                        );
                       },
-                      icon: const Icon(Icons.logout,
-                          color: AppColors.red),
-                      label: const Text(
-                        'Cerrar sesión',
-                        style: TextStyle(color: AppColors.red),
-                      ),
-                      style: OutlinedButton.styleFrom(
-                        minimumSize:
-                            const Size(double.infinity, 50),
-                        side: const BorderSide(color: AppColors.red),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
-                      ),
                     ),
                   ),
                 ],
               ),
             ),
+    );
+  }
+
+  static String _themeModeLabel(ThemeMode m) => switch (m) {
+        ThemeMode.light => 'Claro',
+        ThemeMode.dark => 'Oscuro',
+        _ => 'Según el sistema',
+      };
+
+  Future<void> _showThemePicker(BuildContext context, WidgetRef ref) async {
+    final surface = Theme.of(context).colorScheme.surface;
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 8),
+            ListTile(
+              leading: const Icon(Icons.brightness_auto),
+              title: const Text('Según el sistema'),
+              onTap: () async {
+                await LocalPrefs.instance.setThemeMode(ThemeMode.system);
+                ref.read(themeModeProvider.notifier).state = ThemeMode.system;
+                if (ctx.mounted) Navigator.pop(ctx);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.light_mode_outlined),
+              title: const Text('Claro'),
+              onTap: () async {
+                await LocalPrefs.instance.setThemeMode(ThemeMode.light);
+                ref.read(themeModeProvider.notifier).state = ThemeMode.light;
+                if (ctx.mounted) Navigator.pop(ctx);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.dark_mode_outlined),
+              title: const Text('Oscuro'),
+              onTap: () async {
+                await LocalPrefs.instance.setThemeMode(ThemeMode.dark);
+                ref.read(themeModeProvider.notifier).state = ThemeMode.dark;
+                if (ctx.mounted) Navigator.pop(ctx);
+              },
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
     );
   }
 
@@ -181,9 +264,10 @@ class ProfileScreen extends ConsumerWidget {
   }
 
   Future<ImageSource?> _showSourceDialog(BuildContext context) async {
+    final scheme = Theme.of(context).colorScheme;
     return showModalBottomSheet<ImageSource>(
       context: context,
-      backgroundColor: AppColors.surface,
+      backgroundColor: scheme.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -195,20 +279,18 @@ class ProfileScreen extends ConsumerWidget {
             Container(
               width: 36, height: 4,
               decoration: BoxDecoration(
-                color: AppColors.surfaceBorder,
+                color: scheme.outlineVariant,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
             const SizedBox(height: 12),
             ListTile(
-              leading: const Icon(Icons.camera_alt_outlined,
-                  color: AppColors.purple),
+              leading: Icon(Icons.camera_alt_outlined, color: scheme.primary),
               title: const Text('Tomar foto'),
               onTap: () => Navigator.of(context).pop(ImageSource.camera),
             ),
             ListTile(
-              leading: const Icon(Icons.photo_library_outlined,
-                  color: AppColors.purple),
+              leading: Icon(Icons.photo_library_outlined, color: scheme.primary),
               title: const Text('Elegir de galería'),
               onTap: () => Navigator.of(context).pop(ImageSource.gallery),
             ),
@@ -220,6 +302,15 @@ class ProfileScreen extends ConsumerWidget {
   }
 
   Future<bool> _confirmLogout(BuildContext context) async {
+    final pendientes = EstadoActividadColors.forEstadoConContexto(
+      context,
+      ActivityStatus.pendientes,
+    );
+    final onPendientes =
+        ThemeData.estimateBrightnessForColor(pendientes) == Brightness.light
+            ? const Color(0xFF4A1518)
+            : Colors.white;
+
     final result = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -234,7 +325,9 @@ class ProfileScreen extends ConsumerWidget {
           FilledButton(
             onPressed: () => Navigator.of(ctx).pop(true),
             style: FilledButton.styleFrom(
-                backgroundColor: AppColors.red),
+              backgroundColor: pendientes,
+              foregroundColor: onPendientes,
+            ),
             child: const Text('Cerrar sesión'),
           ),
         ],
@@ -255,12 +348,20 @@ class _InfoTile extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) => ListTile(
-        leading: Icon(icon, color: AppColors.purple),
-        title: Text(label,
-            style: AppTextStyles.caption
-                .copyWith(color: AppColors.textSecondary)),
-        subtitle: Text(value, style: AppTextStyles.body),
-        contentPadding: EdgeInsets.zero,
-      );
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return ListTile(
+      leading: Icon(icon, color: scheme.primary),
+      title: Text(
+        label,
+        style: AppTextStyles.caption
+            .copyWith(color: scheme.onSurfaceVariant),
+      ),
+      subtitle: Text(
+        value,
+        style: AppTextStyles.body.copyWith(color: scheme.onSurface),
+      ),
+      contentPadding: EdgeInsets.zero,
+    );
+  }
 }

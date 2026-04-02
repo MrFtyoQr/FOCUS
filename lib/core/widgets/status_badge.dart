@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../shared/enums/activity_status.dart';
-import '../theme/app_colors.dart';
+import '../utils/activity_status_colors.dart';
 
 class StatusBadge extends StatelessWidget {
   final ActivityStatus status;
@@ -14,11 +14,13 @@ class StatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = AppColors.statusColor(status.name);
+    final brightness = Theme.of(context).brightness;
+    final color =
+        ActivityStatusColors.forStatus(status, brightness: brightness);
     return Container(
       padding: EdgeInsets.symmetric(
         horizontal: large ? 12 : 8,
-        vertical:   large ? 5  : 3,
+        vertical: large ? 5 : 3,
       ),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.15),
@@ -27,9 +29,9 @@ class StatusBadge extends StatelessWidget {
       child: Text(
         status.label,
         style: TextStyle(
-          fontSize:   large ? 12 : 10,
+          fontSize: large ? 12 : 10,
           fontWeight: FontWeight.w500,
-          color:      color,
+          color: color,
         ),
       ),
     );

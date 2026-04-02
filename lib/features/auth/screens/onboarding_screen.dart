@@ -71,7 +71,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         height: 8,
                         decoration: BoxDecoration(
                           color: _currentPage == i
-                              ? AppColors.purple
+                              ? Theme.of(context).colorScheme.primary
                               : AppColors.surfaceBorder,
                           borderRadius: BorderRadius.circular(4),
                         ),
@@ -130,6 +130,7 @@ class _OnboardingPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final primary = Theme.of(context).colorScheme.primary;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 32),
       child: Column(
@@ -138,10 +139,10 @@ class _OnboardingPage extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(28),
             decoration: BoxDecoration(
-              color: AppColors.purple.withValues(alpha: 0.15),
+              color: primary.withValues(alpha: 0.15),
               shape: BoxShape.circle,
             ),
-            child: Icon(icon, size: 64, color: AppColors.purple),
+            child: Icon(icon, size: 64, color: primary),
           ),
           const SizedBox(height: 32),
           Text(title, style: AppTextStyles.heading1, textAlign: TextAlign.center),

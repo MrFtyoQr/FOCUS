@@ -6,6 +6,10 @@ class ProjectModel {
   final String? targetDate;
   final String? areaId;
   final String? areaName;
+  /// Administrador de área asignado (líder del equipo del proyecto).
+  final String? areaAdminName;
+  /// Quién creó el proyecto (proyectos personales por usuario).
+  final String? createdById;
   final DateTime createdAt;
 
   // Campos de progreso (provistos por el backend o calculados localmente)
@@ -22,6 +26,8 @@ class ProjectModel {
     this.targetDate,
     this.areaId,
     this.areaName,
+    this.areaAdminName,
+    this.createdById,
     required this.createdAt,
     this.color               = '#7F77DD',
     this.progress            = 0.0,
@@ -37,6 +43,8 @@ class ProjectModel {
     targetDate:  json['target_date'] as String?,
     areaId:      json['area'] as String?,
     areaName:    json['area_name'] as String?,
+    areaAdminName: json['area_admin_name'] as String?,
+    createdById: json['created_by'] as String?,
     createdAt:   DateTime.parse(json['created_at'] as String),
     color:               (json['color'] as String?)        ?? '#7F77DD',
     progress:            (json['progress'] as num?)?.toDouble() ?? 0.0,
@@ -49,6 +57,8 @@ class ProjectModel {
     'description': description,
     if (status != null)     'status':      status,
     if (targetDate != null) 'target_date': targetDate,
-    if (areaId != null)     'area':        areaId,
+    if (areaId != null)         'area':        areaId,
+    if (areaAdminName != null)  'area_admin_name': areaAdminName,
+    if (createdById != null)    'created_by':      createdById,
   };
 }

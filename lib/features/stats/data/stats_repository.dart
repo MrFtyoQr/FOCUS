@@ -12,6 +12,8 @@ class StatsRepository {
   // Alias usado por la UI (trabajador)
   Future<Map<String, dynamic>> getMyStats() => getPersonalStats();
 
+  /// Estadísticas del área considerando **solo actividades sin proyecto**
+  /// (`project` nulo en API), no el total mezclado con tareas de proyectos.
   Future<Map<String, dynamic>> getAreaStats(String areaId) async {
     final response = await _api.get(ApiEndpoints.statsArea(areaId));
     return response.data as Map<String, dynamic>;
