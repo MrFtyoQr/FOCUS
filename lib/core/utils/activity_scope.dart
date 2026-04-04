@@ -1,14 +1,16 @@
+import 'package:flutter/foundation.dart';
 import '../../shared/models/activity.dart';
 import '../../shared/models/project.dart';
 import '../../shared/models/user.dart';
 import '../../shared/enums/user_role.dart';
 import 'project_kind.dart';
 
-/// Filtro del tablero para AA y TA.
+/// Filtro del tablero para AA/TA y SA.
 enum ActivityDashboardScope {
   all,
   personal,
   team,
+  assigned, // SA: actividades que asignó a otros
 }
 
 /// Actividad "personal" del usuario: es suya y (sin proyecto o proyecto personal).
@@ -39,6 +41,11 @@ bool isTeamActivityForUser(
   return a.areaId == aid && a.ownerId != user.id;
 }
 
+/// Actividad asignada por el SA a otra persona (no es suya como owner).
+bool isAssignedBySAActivity(UserModel user, ActivityModel a) {
+  return a.assignedById == user.id && a.ownerId != user.id;
+}
+
 /// Super Admin o cuenta personal: solo actividades personales propias.
 bool isSuperAdminOrPersonalDashboardActivity(
   UserModel user,
@@ -61,6 +68,14 @@ List<ActivityModel> filterActivitiesForDashboard({
   bool allow(ActivityModel a) {
     switch (user.role) {
       case UserRole.superAdmin:
+        final personal = isPersonalActivityForUser(user, a, projectsById);
+        final assigned = isAssignedBySAActivity(user, a);
+        return switch (scope) {
+          ActivityDashboardScope.personal => personal,
+          ActivityDashboardScope.assigned => assigned,
+          // all y team (fallback seguro) muestran ambos
+          _ => personal || assigned,
+        };
       case UserRole.personal:
         return isSuperAdminOrPersonalDashboardActivity(user, a, projectsById);
       case UserRole.adminArea:
@@ -68,14 +83,31 @@ List<ActivityModel> filterActivitiesForDashboard({
         final personal = isPersonalActivityForUser(user, a, projectsById);
         final team = isTeamActivityForUser(user, a, projectsById);
         return switch (scope) {
-          ActivityDashboardScope.all => personal || team,
           ActivityDashboardScope.personal => personal,
           ActivityDashboardScope.team => team,
+          // all y assigned (fallback seguro) muestran ambos
+          _ => personal || team,
         };
     }
   }
 
-  return all.where(allow).toList();
+  final result = all.where(allow).toList();
+
+  if (kDebugMode) {
+    debugPrint('[FILTER] user.id=${user.id} role=${user.role.name} scope=${scope.name}');
+    for (final a in all) {
+      final passed = allow(a);
+      if (!passed) {
+        debugPrint(
+          '[FILTER] ✗ "${a.title}" | ownerId=${a.ownerId} '
+          'isSinProyecto=${a.isSinProyecto} areaId=${a.areaId}',
+        );
+      }
+    }
+    debugPrint('[FILTER] ✓ ${result.length}/${all.length} actividades visibles');
+  }
+
+  return result;
 }
 
 /// Actividades personales para métricas de productividad (mismo criterio que tablero).

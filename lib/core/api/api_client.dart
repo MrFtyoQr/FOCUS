@@ -11,6 +11,7 @@ class ApiClient {
 
   void initialize() {
     final baseUrl = dotenv.env['API_BASE_URL'] ?? '';
+    debugPrint('[API] Inicializando cliente → $baseUrl');
     _dio = Dio(
       BaseOptions(
         baseUrl: baseUrl,
@@ -43,23 +44,47 @@ class ApiClient {
 }
 
 class _LogInterceptor extends Interceptor {
+  static String _truncate(Object? v, [int max = 300]) {
+    if (v == null) return '';
+    final s = v.toString();
+    return s.length > max ? '${s.substring(0, max)}…' : s;
+  }
+
   @override
   void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
-    debugPrint('[API] → ${options.method} ${options.uri}');
+    final body = options.data != null ? ' | body: ${_truncate(options.data)}' : '';
+    debugPrint('[API] → ${options.method} ${options.uri}$body');
     handler.next(options);
   }
 
   @override
   void onResponse(Response response, ResponseInterceptorHandler handler) {
-    debugPrint('[API] ← ${response.statusCode} ${response.requestOptions.method} ${response.requestOptions.uri}');
+    final path   = response.requestOptions.path;
+    final method = response.requestOptions.method;
+    final status = response.statusCode;
+    debugPrint('[API] ← $status $method ${response.requestOptions.uri}');
+
+    // Loguea body completo (truncado) para endpoints relevantes al debug actual.
+    final _logBodyPaths = [
+      '/users/invite',
+      '/activities/',
+      '/auth/me',
+      '/auth/login',
+    ];
+    if (_logBodyPaths.any((p) => path.contains(p))) {
+      debugPrint('[API] ← body: ${_truncate(response.data, 600)}');
+    }
+
     handler.next(response);
   }
 
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) {
-    final status  = err.response?.statusCode ?? '--';
-    final detail  = err.response?.data is Map ? (err.response!.data as Map)['detail'] : null;
-    debugPrint('[API] ✗ $status ${err.requestOptions.method} ${err.requestOptions.uri}${detail != null ? ' | $detail' : ''}');
+    final status = err.response?.statusCode ?? '--';
+    final uri    = err.requestOptions.uri;
+    final method = err.requestOptions.method;
+    final body   = err.response?.data != null ? _truncate(err.response!.data) : err.message ?? '';
+    debugPrint('[API] ✗ $status $method $uri | $body');
     handler.next(err);
   }
 }

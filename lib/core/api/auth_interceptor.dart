@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import '../storage/secure_storage.dart';
 import 'api_endpoints.dart';
 
@@ -18,6 +19,7 @@ class AuthInterceptor extends Interceptor {
     const publicPaths = [
       ApiEndpoints.login,
       ApiEndpoints.refresh,
+      ApiEndpoints.verifyInvite,
       ApiEndpoints.acceptInvite,
     ];
     if (publicPaths.any((p) => options.path.contains(p))) {
@@ -27,6 +29,8 @@ class AuthInterceptor extends Interceptor {
     final token = await SecureStorage.instance.getAccessToken();
     if (token != null) {
       options.headers['Authorization'] = 'Bearer $token';
+    } else {
+      debugPrint('[AUTH] Sin access token para ${options.method} ${options.path}');
     }
     handler.next(options);
   }
@@ -52,10 +56,12 @@ class AuthInterceptor extends Interceptor {
     try {
       final refreshToken = await SecureStorage.instance.getRefreshToken();
       if (refreshToken == null) {
+        debugPrint('[AUTH] Sin refresh token — forzando logout');
         await _forceLogout();
         return handler.next(err);
       }
 
+      debugPrint('[AUTH] Token expirado, intentando refresh…');
       final refreshDio = Dio(BaseOptions(baseUrl: _dio.options.baseUrl));
       final response = await refreshDio.post(
         ApiEndpoints.refresh,
@@ -65,6 +71,7 @@ class AuthInterceptor extends Interceptor {
       final newAccess  = response.data['access']  as String;
       final newRefresh = response.data['refresh'] as String;
 
+      debugPrint('[AUTH] Refresh exitoso, reintentando ${err.requestOptions.method} ${err.requestOptions.path}');
       await SecureStorage.instance.saveTokens(
         access: newAccess, refresh: newRefresh,
       );
@@ -78,7 +85,8 @@ class AuthInterceptor extends Interceptor {
       _pendingRequests.clear();
 
       handler.resolve(retryResponse);
-    } catch (_) {
+    } catch (e) {
+      debugPrint('[AUTH] Refresh fallido ($e) — forzando logout');
       await _forceLogout();
       handler.next(err);
     } finally {

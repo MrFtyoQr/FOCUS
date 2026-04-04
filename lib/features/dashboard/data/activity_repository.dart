@@ -94,7 +94,9 @@ class ActivityRepository {
 
   Future<List<Map<String, dynamic>>> getAttachments(String id) async {
     final response = await _api.get(ApiEndpoints.attachments(id));
-    return (response.data as List).cast<Map<String, dynamic>>();
+    final d = response.data;
+    final List raw = d is List ? d : (d is Map ? (d['results'] as List? ?? []) : []);
+    return raw.map((e) => e as Map<String, dynamic>).toList();
   }
 
   Future<void> uploadAttachment(String id, String filePath, String fileName) async {
@@ -110,6 +112,8 @@ class ActivityRepository {
 
   Future<List<Map<String, dynamic>>> getLogs(String id) async {
     final response = await _api.get(ApiEndpoints.activityLogs(id));
-    return (response.data as List).cast<Map<String, dynamic>>();
+    final d = response.data;
+    final List raw = d is List ? d : (d is Map ? (d['results'] as List? ?? []) : []);
+    return raw.map((e) => e as Map<String, dynamic>).toList();
   }
 }

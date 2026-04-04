@@ -1,44 +1,70 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-/// El registro de usuarios en HiperApp se realiza exclusivamente mediante
-/// invitación. Esta pantalla informa al usuario y lo redirige al login.
+/// Las cuentas en HiperApp se crean exclusivamente por invitación.
+/// Esta pantalla dirige al usuario al flujo de código.
 class RegisterScreen extends StatelessWidget {
   const RegisterScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final theme  = Theme.of(context);
+    final scheme = theme.colorScheme;
+
     return Scaffold(
       appBar: AppBar(title: const Text('Crear cuenta')),
       body: SafeArea(
         child: Center(
           child: Padding(
-            padding: const EdgeInsets.all(32),
+            padding: const EdgeInsets.symmetric(horizontal: 32),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.mail_outline,
-                    size: 64, color: theme.colorScheme.primary),
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: scheme.primaryContainer.withValues(alpha: 0.4),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.vpn_key_outlined,
+                    size: 52,
+                    color: scheme.primary,
+                  ),
+                ),
                 const SizedBox(height: 24),
                 Text(
-                  'Registro por invitación',
-                  style: theme.textTheme.headlineSmall,
+                  'Acceso por invitación',
+                  style: theme.textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  'Para crear tu cuenta necesitas un enlace de invitación '
-                  'enviado por tu administrador.',
+                  'Tu administrador te envió un código de invitación. '
+                  'Ingrésalo para crear tu cuenta.',
                   style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant),
+                    color: scheme.onSurfaceVariant,
+                  ),
                   textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 32),
+                const SizedBox(height: 36),
                 FilledButton.icon(
+                  onPressed: () => context.go('/join'),
+                  icon: const Icon(Icons.key_outlined),
+                  label: const Text('Tengo un código de invitación'),
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size(double.infinity, 50),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextButton.icon(
                   onPressed: () => context.go('/login'),
-                  icon: const Icon(Icons.login),
-                  label: const Text('Ir al inicio de sesión'),
+                  icon: const Icon(Icons.arrow_back, size: 18),
+                  label: const Text('Volver al inicio de sesión'),
                 ),
               ],
             ),

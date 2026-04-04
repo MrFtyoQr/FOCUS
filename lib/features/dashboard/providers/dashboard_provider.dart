@@ -30,11 +30,9 @@ final dashboardProvider =
   final projects = await ref.watch(projectsProvider.future);
   final byId = projectMap(projects);
 
-  ActivityDashboardScope scope;
-  if (user == null) {
-    scope = ActivityDashboardScope.personal;
-  } else if (user.role == UserRole.superAdmin ||
-      user.role == UserRole.personal) {
+  // personal account: siempre personal. SA y org: respetan el selector UI.
+  final ActivityDashboardScope scope;
+  if (user == null || user.role == UserRole.personal) {
     scope = ActivityDashboardScope.personal;
   } else {
     scope = scopeUi;

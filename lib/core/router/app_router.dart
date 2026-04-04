@@ -67,8 +67,8 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       final isAuthenticated = authStatus == AuthStatus.authenticated;
 
-      // Deep link de invitación — siempre permitir
-      if (path.startsWith('/invite/')) return null;
+      // Flujos de invitación — siempre permitir sin auth
+      if (path.startsWith('/invite/') || path == '/join') return null;
 
       if (!isAuthenticated) {
         final allowed = {'/login', '/register', '/loading'};
@@ -97,7 +97,13 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/onboarding', builder: (_, __) => const OnboardingScreen()),
       GoRoute(path: '/biometric',  builder: (_, __) => const BiometricScreen()),
 
-      // Deep link invitación
+      // Unirse con código (entrada manual — flujo principal)
+      GoRoute(
+        path: '/join',
+        builder: (_, __) => const InviteScreen(token: ''),
+      ),
+
+      // Deep link de invitación (token pre-cargado desde URL)
       GoRoute(
         path: '/invite/:token',
         builder: (_, state) =>

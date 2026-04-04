@@ -176,32 +176,63 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   }
 
   Widget _filtroAmbitoTablero(BuildContext context, UserRole role) {
-    if (role != UserRole.adminArea && role != UserRole.trabajador) {
-      return const SizedBox.shrink();
-    }
+    final isSa = role == UserRole.superAdmin;
+    final isOrgRole = role == UserRole.adminArea || role == UserRole.trabajador;
+    if (!isSa && !isOrgRole) return const SizedBox.shrink();
+
     final scope = ref.watch(dashboardScopeUiProvider);
     final scheme = Theme.of(context).colorScheme;
+
+    // Normaliza el scope al conjunto válido según rol para evitar assertion errors.
+    final safeScope = isSa
+        ? (scope == ActivityDashboardScope.team
+            ? ActivityDashboardScope.all
+            : scope)
+        : (scope == ActivityDashboardScope.assigned
+            ? ActivityDashboardScope.all
+            : scope);
+
+    final segments = isSa
+        ? const <ButtonSegment<ActivityDashboardScope>>[
+            ButtonSegment(
+              value: ActivityDashboardScope.all,
+              label: Text('Todas'),
+              icon: Icon(Icons.layers_outlined, size: 18),
+            ),
+            ButtonSegment(
+              value: ActivityDashboardScope.personal,
+              label: Text('Personales'),
+              icon: Icon(Icons.person_outline, size: 18),
+            ),
+            ButtonSegment(
+              value: ActivityDashboardScope.assigned,
+              label: Text('Asignadas'),
+              icon: Icon(Icons.assignment_ind_outlined, size: 18),
+            ),
+          ]
+        : const <ButtonSegment<ActivityDashboardScope>>[
+            ButtonSegment(
+              value: ActivityDashboardScope.all,
+              label: Text('Todas'),
+              icon: Icon(Icons.layers_outlined, size: 18),
+            ),
+            ButtonSegment(
+              value: ActivityDashboardScope.personal,
+              label: Text('Personales'),
+              icon: Icon(Icons.person_outline, size: 18),
+            ),
+            ButtonSegment(
+              value: ActivityDashboardScope.team,
+              label: Text('Equipo'),
+              icon: Icon(Icons.groups_outlined, size: 18),
+            ),
+          ];
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
       child: SegmentedButton<ActivityDashboardScope>(
-        segments: const [
-          ButtonSegment(
-            value: ActivityDashboardScope.all,
-            label: Text('Todas'),
-            icon: Icon(Icons.layers_outlined, size: 18),
-          ),
-          ButtonSegment(
-            value: ActivityDashboardScope.personal,
-            label: Text('Personales'),
-            icon: Icon(Icons.person_outline, size: 18),
-          ),
-          ButtonSegment(
-            value: ActivityDashboardScope.team,
-            label: Text('Equipo'),
-            icon: Icon(Icons.groups_outlined, size: 18),
-          ),
-        ],
-        selected: {scope},
+        segments: segments,
+        selected: {safeScope},
         onSelectionChanged: (s) => _onAmbitoChanged(s.first),
         style: SegmentedButton.styleFrom(
           visualDensity: VisualDensity.compact,

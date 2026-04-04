@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -35,20 +36,351 @@ class _TeamScreenState extends ConsumerState<TeamScreen> {
     }
   }
 
-  void _mostrarInviteInfo() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      AppSnackBar.info(
-        'Los miembros se añaden desde tu administración o enlace de invitación.',
-      ),
+  // ── Helpers ──────────────────────────────────────────────────────────────
+
+  String _labelRol(String role) => switch (role) {
+        'super_admin' => 'Super Admin',
+        'admin_area'  => 'Admin de Área',
+        _             => 'Trabajador',
+      };
+
+  /// Muestra el código de invitación generado con botón de copiar.
+  Future<void> _mostrarDialogoEnlace(
+    String token,
+    String role, {
+    String? expiresAt,
+  }) async {
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) {
+        final theme  = Theme.of(ctx);
+        final scheme = theme.colorScheme;
+        return AlertDialog(
+          title: Text('Código para ${_labelRol(role)}'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Comparte este código con el nuevo integrante. '
+                'Debe abrirlo en la app y pegarlo en "Tengo un código de invitación".',
+                style: theme.textTheme.bodyMedium,
+              ),
+              const SizedBox(height: 16),
+              // ── Código destacado ────────────────────────────────────────
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: scheme.primaryContainer.withValues(alpha: 0.35),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: scheme.primary.withValues(alpha: 0.4),
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Código de invitación',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: scheme.primary,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.8,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    SelectableText(
+                      token,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        fontFamily: 'monospace',
+                        fontWeight: FontWeight.bold,
+                        color: scheme.onSurface,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (expiresAt != null) ...[
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.schedule_outlined,
+                      size: 14,
+                      color: scheme.onSurfaceVariant,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Expira: $expiresAt',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ],
+          ),
+          actions: [
+            TextButton.icon(
+              onPressed: () {
+                Clipboard.setData(ClipboardData(text: token));
+                ScaffoldMessenger.of(context).showSnackBar(
+                  AppSnackBar.exito('Código copiado al portapapeles'),
+                );
+              },
+              icon: const Icon(Icons.copy, size: 18),
+              label: const Text('Copiar código'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Listo'),
+            ),
+          ],
+        );
+      },
     );
   }
 
-  void _mostrarCrearAdminArea() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      AppSnackBar.info(
-        'Aquí podrás crear perfiles de administrador de área cuando el flujo esté conectado al servidor.',
+  // ── Invitar SA: elige rol y área (con creación inline) ───────────────────
+
+  Future<void> _invitarSA() async {
+    final repo = ref.read(teamRepositoryProvider);
+
+    List<Map<String, dynamic>> areasList = [];
+    try {
+      areasList = await repo.getAreas();
+    } catch (_) {}
+    if (!mounted) return;
+
+    var rolSeleccionado = 'admin_area';
+    var areaIdSeleccionado =
+        areasList.isNotEmpty ? areasList.first['id'] as String : '';
+
+    final confirmar = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) {
+          // Crear área inline desde el mismo diálogo
+          Future<void> crearAreaInline() async {
+            final nameCtrl = TextEditingController();
+            final descCtrl = TextEditingController();
+            // Usamos el context del widget padre (no ctx de StatefulBuilder)
+            // para evitar usar un BuildContext potencialmente obsoleto.
+            if (!context.mounted) return;
+            final ok = await showDialog<bool>(
+              context: context,
+              builder: (innerCtx) => AlertDialog(
+                title: const Text('Nueva área'),
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: nameCtrl,
+                      decoration: const InputDecoration(
+                        labelText: 'Nombre *',
+                        prefixIcon: Icon(Icons.groups_outlined),
+                      ),
+                      textCapitalization: TextCapitalization.sentences,
+                      autofocus: true,
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: descCtrl,
+                      decoration: const InputDecoration(
+                        labelText: 'Descripción',
+                        prefixIcon: Icon(Icons.description_outlined),
+                      ),
+                      maxLines: 2,
+                    ),
+                  ],
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(innerCtx, false),
+                    child: const Text('Cancelar'),
+                  ),
+                  FilledButton(
+                    onPressed: () {
+                      if (nameCtrl.text.trim().isNotEmpty) {
+                        Navigator.pop(innerCtx, true);
+                      }
+                    },
+                    child: const Text('Crear'),
+                  ),
+                ],
+              ),
+            );
+            final name = nameCtrl.text.trim();
+            final desc = descCtrl.text.trim();
+            // Diferir dispose al siguiente frame para evitar la condición de
+            // carrera con la limpieza de elementos de la UI del diálogo
+            // (causante del assertion '_dependents.isEmpty' en framework.dart).
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              nameCtrl.dispose();
+              descCtrl.dispose();
+            });
+            if (ok != true || name.isEmpty) return;
+
+            try {
+              final nueva = await repo.createArea(
+                name: name,
+                description: desc.isEmpty ? null : desc,
+              );
+              setDialogState(() {
+                areasList = [...areasList, nueva];
+                areaIdSeleccionado = nueva['id'] as String;
+              });
+            } catch (e) {
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  AppSnackBar.error('No se pudo crear el área: $e'),
+                );
+              }
+            }
+          }
+
+          return AlertDialog(
+            title: const Text('Invitar al equipo'),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Rol a invitar',
+                    style: Theme.of(ctx).textTheme.titleSmall,
+                  ),
+                  RadioListTile<String>(
+                    dense: true,
+                    title: const Text('Super Admin'),
+                    subtitle: const Text('Acceso completo a la organización'),
+                    value: 'super_admin',
+                    groupValue: rolSeleccionado,
+                    onChanged: (v) =>
+                        setDialogState(() => rolSeleccionado = v!),
+                  ),
+                  RadioListTile<String>(
+                    dense: true,
+                    title: const Text('Admin de Área'),
+                    subtitle: const Text('Gestiona un área y su equipo'),
+                    value: 'admin_area',
+                    groupValue: rolSeleccionado,
+                    onChanged: (v) =>
+                        setDialogState(() => rolSeleccionado = v!),
+                  ),
+                  RadioListTile<String>(
+                    dense: true,
+                    title: const Text('Trabajador'),
+                    subtitle: const Text('Miembro de un área'),
+                    value: 'trabajador',
+                    groupValue: rolSeleccionado,
+                    onChanged: (v) =>
+                        setDialogState(() => rolSeleccionado = v!),
+                  ),
+                  if (rolSeleccionado != 'super_admin') ...[
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: areasList.isEmpty
+                              ? Text(
+                                  'Sin áreas — crea una primero.',
+                                  style: TextStyle(
+                                    color: Theme.of(ctx).colorScheme.error,
+                                    fontSize: 13,
+                                  ),
+                                )
+                              : InputDecorator(
+                                  decoration: const InputDecoration(
+                                    labelText: 'Área *',
+                                    prefixIcon: Icon(Icons.groups_outlined),
+                                    floatingLabelBehavior:
+                                        FloatingLabelBehavior.auto,
+                                  ),
+                                  child: DropdownButtonHideUnderline(
+                                    child: DropdownButton<String>(
+                                      value: areaIdSeleccionado.isEmpty
+                                          ? areasList.first['id'] as String
+                                          : areaIdSeleccionado,
+                                      isExpanded: true,
+                                      items: areasList.map((a) {
+                                        return DropdownMenuItem<String>(
+                                          value: a['id'] as String,
+                                          child: Text(
+                                            a['name'] as String? ?? '',
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        );
+                                      }).toList(),
+                                      onChanged: (v) {
+                                        if (v == null) return;
+                                        setDialogState(
+                                          () => areaIdSeleccionado = v,
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                ),
+                        ),
+                        const SizedBox(width: 8),
+                        IconButton.filledTonal(
+                          tooltip: 'Nueva área',
+                          icon: const Icon(Icons.add, size: 20),
+                          onPressed: crearAreaInline,
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Cancelar'),
+              ),
+              FilledButton(
+                onPressed:
+                    rolSeleccionado != 'super_admin' && areasList.isEmpty
+                        ? null
+                        : () => Navigator.pop(ctx, true),
+                child: const Text('Generar enlace'),
+              ),
+            ],
+          );
+        },
       ),
     );
+
+    if (confirmar != true || !mounted) return;
+
+    try {
+      final areaArg =
+          rolSeleccionado == 'super_admin' ? null : areaIdSeleccionado;
+      final map = await repo.generateInvite(
+        areaId: areaArg,
+        role: rolSeleccionado,
+      );
+      if (!mounted) return;
+      // El backend devuelve 'code' (código corto) o 'token' como fallback.
+      final code = map['code'] as String?
+          ?? map['token'] as String?
+          ?? '';
+      await _mostrarDialogoEnlace(
+        code,
+        rolSeleccionado,
+        expiresAt: map['expires_at'] as String?,
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          AppSnackBar.error('No se pudo generar la invitación: $e'),
+        );
+      }
+    }
   }
 
   Future<void> _invitarTrabajadorArea() async {
@@ -60,22 +392,14 @@ class _TeamScreenState extends ConsumerState<TeamScreen> {
             areaId: aid,
             role: 'trabajador',
           );
-      final token = map['token'] as String? ?? '';
       if (!mounted) return;
-      await showDialog<void>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text('Invitar trabajador (TA)'),
-          content: SelectableText(
-            'Comparte el enlace de invitación con tu nuevo integrante:\n\n/invite/$token',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cerrar'),
-            ),
-          ],
-        ),
+      final code = map['code'] as String?
+          ?? map['token'] as String?
+          ?? '';
+      await _mostrarDialogoEnlace(
+        code,
+        'trabajador',
+        expiresAt: map['expires_at'] as String?,
       );
     } catch (e) {
       if (mounted) {
@@ -146,7 +470,7 @@ class _TeamScreenState extends ConsumerState<TeamScreen> {
                 ),
                 const SizedBox(height: 12),
                 OutlinedButton.icon(
-                  onPressed: _mostrarCrearAdminArea,
+                  onPressed: null,
                   icon: const Icon(Icons.workspace_premium_outlined),
                   label: const Text('Saber más sobre ser Super Admin'),
                 ),
@@ -167,8 +491,8 @@ class _TeamScreenState extends ConsumerState<TeamScreen> {
           actions: [
             IconButton(
               icon: const Icon(Icons.add),
-              tooltip: 'Crear administrador de área',
-              onPressed: _mostrarCrearAdminArea,
+              tooltip: 'Invitar al equipo',
+              onPressed: _invitarSA,
             ),
             IconButton(
               icon: const Icon(Icons.refresh_rounded),
@@ -196,9 +520,9 @@ class _TeamScreenState extends ConsumerState<TeamScreen> {
                     ),
                     const SizedBox(height: 8),
                     FilledButton.icon(
-                      onPressed: _mostrarCrearAdminArea,
+                      onPressed: _invitarSA,
                       icon: const Icon(Icons.add),
-                      label: const Text('Crear administrador de área'),
+                      label: const Text('Invitar al equipo'),
                     ),
                   ],
                 ),
@@ -236,6 +560,40 @@ class _TeamScreenState extends ConsumerState<TeamScreen> {
       );
     }
 
+    // Los trabajadores no tienen permiso para listar usuarios (/api/users/ → 403).
+    // Mostramos una vista informativa en lugar de lanzar la llamada.
+    if (user.isTrabajador) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Equipo'), elevation: 0),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(32),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.groups_outlined, size: 72, color: muted),
+                const SizedBox(height: 20),
+                Text(
+                  'Vista de equipo',
+                  style: Theme.of(context).textTheme.titleLarge
+                      ?.copyWith(fontWeight: FontWeight.bold),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Solo los administradores pueden gestionar el equipo.\n'
+                  'Contacta a tu administrador de área para cualquier cambio.',
+                  style: Theme.of(context).textTheme.bodyMedium
+                      ?.copyWith(color: muted),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     final async = ref.watch(teamScreenDataProvider);
     return Scaffold(
       appBar: AppBar(
@@ -251,8 +609,8 @@ class _TeamScreenState extends ConsumerState<TeamScreen> {
           if (!user.isTrabajador)
             IconButton(
               icon: const Icon(Icons.add),
-              tooltip: 'Invitar',
-              onPressed: _mostrarInviteInfo,
+              tooltip: 'Invitar trabajador',
+              onPressed: _invitarTrabajadorArea,
             ),
           IconButton(
             icon: const Icon(Icons.refresh_rounded),
@@ -306,7 +664,7 @@ class _TeamScreenState extends ConsumerState<TeamScreen> {
                     )
                   else
                     FilledButton.icon(
-                      onPressed: _mostrarInviteInfo,
+                      onPressed: _invitarTrabajadorArea,
                       icon: const Icon(Icons.add),
                       label: const Text('Invitar al equipo'),
                     ),
@@ -580,7 +938,7 @@ class _TeamScreenState extends ConsumerState<TeamScreen> {
           runSpacing: 8,
           children: data.trabajadores
               .map(
-                (u) => Chip(
+                (u) => ActionChip(
                   avatar: CircleAvatar(
                     maxRadius: 16,
                     child: Text(
@@ -592,11 +950,93 @@ class _TeamScreenState extends ConsumerState<TeamScreen> {
                   ),
                   label: Text(u.fullName),
                   labelStyle: theme.textTheme.bodySmall,
+                  onPressed: () => _mostrarInfoTrabajador(context, u),
                 ),
               )
               .toList(),
         ),
     ];
+  }
+
+  void _mostrarInfoTrabajador(BuildContext context, UserModel u) {
+    final theme  = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final muted  = scheme.onSurfaceVariant;
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Row(
+          children: [
+            CircleAvatar(
+              radius: 20,
+              backgroundColor: scheme.primaryContainer,
+              child: Text(
+                u.firstName.isNotEmpty ? u.firstName[0].toUpperCase() : '?',
+                style: TextStyle(
+                  color: scheme.onPrimaryContainer,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                u.fullName,
+                style: theme.textTheme.titleMedium,
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _infoRow(context, Icons.email_outlined, 'Correo', u.email),
+            const SizedBox(height: 8),
+            _infoRow(context, Icons.badge_outlined, 'Rol', 'Trabajador'),
+            if (u.areaName != null) ...[
+              const SizedBox(height: 8),
+              _infoRow(context, Icons.group_work_outlined, 'Área', u.areaName!),
+            ],
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cerrar'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _infoRow(BuildContext context, IconData icon, String label, String value) {
+    final theme  = Theme.of(context);
+    final scheme = theme.colorScheme;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 16, color: scheme.onSurfaceVariant),
+        const SizedBox(width: 8),
+        Expanded(
+          child: RichText(
+            text: TextSpan(
+              style: theme.textTheme.bodyMedium,
+              children: [
+                TextSpan(
+                  text: '$label: ',
+                  style: TextStyle(
+                    color: scheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                TextSpan(text: value),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
   }
 
   Widget _buildPersonaCard(

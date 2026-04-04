@@ -118,8 +118,19 @@ class MockAuthRepository extends AuthRepository {
   }
 
   @override
+  Future<InviteInfo> verifyInviteCode(String code) async {
+    await Future.delayed(const Duration(milliseconds: 500));
+    if (code.trim().isEmpty) throw Exception('Código inválido');
+    return const InviteInfo(
+      role: 'admin_area',
+      areaName: 'Área Demo',
+      expiresAt: '2026-04-05T00:00:00Z',
+    );
+  }
+
+  @override
   Future<UserModel> acceptInvitation({
-    required String token,
+    required String code,
     required String email,
     required String firstName,
     required String lastName,
@@ -443,8 +454,28 @@ class MockTeamRepository extends TeamRepository {
       _fake(MockData.teamMembers.where((m) => m.areaId == areaId).toList());
 
   @override
+  Future<List<Map<String, dynamic>>> getAreas() => _fake(
+        MockData.allAreasStats
+            .map((r) => {
+                  'id': r['area_id'] as String,
+                  'name': r['area_name'] as String? ?? '',
+                })
+            .toList(),
+      );
+
+  @override
+  Future<Map<String, dynamic>> createArea({
+    required String name,
+    String? description,
+  }) => _fake({
+        'id': 'uuid-area-mock-${name.hashCode.abs()}',
+        'name': name,
+        'description': description ?? '',
+      });
+
+  @override
   Future<Map<String, dynamic>> generateInvite({
-    required String areaId,
+    String? areaId,
     required String role,
   }) => _fake({
     'token': 'mock-invite-token-abc123',

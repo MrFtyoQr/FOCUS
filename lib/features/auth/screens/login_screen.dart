@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/auth_provider.dart';
@@ -285,26 +284,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                 color: theme.colorScheme.onSurfaceVariant),
             textAlign: TextAlign.center,
           ),
-          if (dotenv.env['USE_MOCK'] == 'true') ...[
-            SizedBox(height: isDesktop ? 14 : 12),
-            Text(
-              dotenv.env['MOCK_ACT_AS']?.trim().isNotEmpty == true
-                  ? 'Mock: el rol viene de app.env (MOCK_ACT_AS). Reinicia la app si lo cambias.'
-                  : 'Mock: Super Admin = admin@focus.com, correo con «superadmin», '
-                      'o MOCK_ACT_AS=super_admin en app.env.',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.outline,
-                fontSize: 12,
-                height: 1.35,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
           SizedBox(height: isDesktop ? 16 : 12),
           TextButton.icon(
             onPressed: () => context.go('/register'),
             icon: const Icon(Icons.person_add_outlined, size: 20),
             label: const Text('¿No tienes cuenta? Regístrate'),
+          ),
+          const SizedBox(height: 4),
+          TextButton.icon(
+            onPressed: () => context.go('/join'),
+            icon: const Icon(Icons.vpn_key_outlined, size: 20),
+            label: const Text('Tengo un código de invitación'),
+            style: TextButton.styleFrom(
+              foregroundColor: theme.colorScheme.secondary,
+            ),
           ),
         ],
       ),

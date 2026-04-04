@@ -300,11 +300,21 @@ class _CaptureScreenState extends ConsumerState<CaptureScreen> {
                     if (user == null) return const SizedBox.shrink();
                     final opts = projectsForCapture(user, projects);
                     final validIds = opts.map((p) => p.id).toSet();
-                    if (_projectId != null && !validIds.contains(_projectId)) {
+                    // Valor seguro: si el proyecto guardado ya no está en la
+                    // lista actualizada evitamos pasar un value inválido al
+                    // DropdownButtonFormField (lo que dispara la aserción de
+                    // Flutter). Sincronizamos _projectId en el siguiente frame.
+                    final safeProjectId =
+                        validIds.contains(_projectId) ? _projectId : null;
+                    if (safeProjectId == null && _projectId != null) {
                       WidgetsBinding.instance.addPostFrameCallback((_) {
                         if (mounted) setState(() => _projectId = null);
                       });
                     }
+                    // La clave fuerza recreación del FormField cuando cambia la
+                    // lista de proyectos, garantizando que initialValue siempre
+                    // se aplique con un valor que existe en items.
+                    final dropdownKey = ValueKey(validIds.join(','));
                     return Column(
                       children: [
                         Card(
@@ -331,7 +341,8 @@ class _CaptureScreenState extends ConsumerState<CaptureScreen> {
                                 ] else ...[
                                   const SizedBox(height: 8),
                                   DropdownButtonFormField<String?>(
-                                    value: _projectId,
+                                    key: dropdownKey,
+                                    initialValue: safeProjectId,
                                     decoration: const InputDecoration(
                                       hintText: 'Seleccionar proyecto',
                                       prefixIcon: Icon(Icons.folder),

@@ -1,6 +1,22 @@
+import 'package:dio/dio.dart';
 import '../../../core/api/api_client.dart';
 import '../../../core/api/api_endpoints.dart';
 import '../../../shared/models/user.dart';
+
+/// Extrae el primer mensaje de error legible de una [DioException].
+String _parseTeamError(DioException e, {String fallback = 'Error inesperado'}) {
+  final data = e.response?.data;
+  if (data is Map) {
+    final values = data.values.whereType<Object>().toList();
+    if (values.isNotEmpty) {
+      final first = values.first;
+      if (first is List && first.isNotEmpty) return first.first.toString();
+      return first.toString();
+    }
+  }
+  if (data is String && data.isNotEmpty) return data;
+  return e.message ?? fallback;
+}
 
 class TeamRepository {
   final _api = ApiClient.instance;
@@ -32,23 +48,55 @@ class TeamRepository {
 
   Future<List<UserModel>> getAreaMembers(String areaId) async {
     final response = await _api.get(ApiEndpoints.areaMembers(areaId));
-    final results  = response.data as List? ?? [];
+    final results  = response.data['results'] as List? ?? response.data as List? ?? [];
     return results
         .map((e) => UserModel.fromJson(e as Map<String, dynamic>))
         .toList();
   }
 
-  /// Genera invitación. Retorna el token plano para compartir.
+  /// Lista de áreas de la organización. Retorna: [{id, name, description?}]
+  Future<List<Map<String, dynamic>>> getAreas() async {
+    final response = await _api.get(ApiEndpoints.areas);
+    final list = response.data['results'] as List? ?? response.data as List;
+    return list.cast<Map<String, dynamic>>();
+  }
+
+  /// Crea un área. Retorna: {id, name, description?}
+  Future<Map<String, dynamic>> createArea({
+    required String name,
+    String? description,
+  }) async {
+    try {
+      final body = <String, dynamic>{'name': name};
+      if (description != null && description.isNotEmpty) {
+        body['description'] = description;
+      }
+      final response = await _api.post(ApiEndpoints.areas, data: body);
+      return response.data as Map<String, dynamic>;
+    } on DioException catch (e) {
+      throw Exception(_parseTeamError(e, fallback: 'No se pudo crear el área'));
+    }
+  }
+
+  /// Genera invitación. [areaId] es null para rol super_admin.
+  /// Retorna: { code, token, expires_at, role, area_id? }
+  ///
+  /// Lanza [Exception] con mensaje legible si el backend rechaza la solicitud
+  /// (ej. 403 por permisos de AA, 429 por rate limit).
   Future<Map<String, dynamic>> generateInvite({
-    required String areaId,
+    String? areaId,
     required String role,
   }) async {
-    final response = await _api.post(ApiEndpoints.inviteUser, data: {
-      'area': areaId,
-      'role': role,
-    });
-    // Retorna: { token, expires_at, role, area_id }
-    return response.data as Map<String, dynamic>;
+    try {
+      final body = <String, dynamic>{'role': role};
+      if (areaId != null && areaId.isNotEmpty) body['area'] = areaId;
+      final response = await _api.post(ApiEndpoints.inviteUser, data: body);
+      return response.data as Map<String, dynamic>;
+    } on DioException catch (e) {
+      throw Exception(
+        _parseTeamError(e, fallback: 'No se pudo generar la invitación'),
+      );
+    }
   }
 
   Future<UserModel> updateUser(String userId, Map<String, dynamic> data) async {

@@ -32,32 +32,30 @@ class _ActivityDetailScreenState extends ConsumerState<ActivityDetailScreen> {
     ref.invalidate(dashboardProvider);
   }
 
-  Color _estadoColor(ActivityStatus estado) {
-    return ActivityStatusColors.forStatus(
-      estado,
-      brightness: Theme.of(context).brightness,
-    );
-  }
+  // ── Helpers visuales ─────────────────────────────────────────────────────
 
-  IconData _estadoIcon(ActivityStatus estado) {
-    return switch (estado) {
-      ActivityStatus.bandeja => Icons.inbox_outlined,
-      ActivityStatus.hoy => Icons.today_outlined,
-      ActivityStatus.manana => Icons.event_outlined,
-      ActivityStatus.programado => Icons.schedule_outlined,
-      ActivityStatus.pendientes => Icons.pause_circle_outline,
-      ActivityStatus.completada => Icons.star_outline,
-    };
-  }
+  Color _estadoColor(ActivityStatus estado) => ActivityStatusColors.forStatus(
+        estado,
+        brightness: Theme.of(context).brightness,
+      );
+
+  IconData _estadoIcon(ActivityStatus estado) => switch (estado) {
+        ActivityStatus.bandeja    => Icons.inbox_outlined,
+        ActivityStatus.hoy        => Icons.today_outlined,
+        ActivityStatus.manana     => Icons.event_outlined,
+        ActivityStatus.programado => Icons.schedule_outlined,
+        ActivityStatus.pendientes => Icons.pause_circle_outline,
+        ActivityStatus.completada => Icons.star_outline,
+      };
 
   IconData _logIcon(String tipo) {
     final t = tipo.toLowerCase();
-    if (t.contains('create')) return Icons.add_circle_outline;
-    if (t.contains('move')) return Icons.swap_horiz;
-    if (t.contains('complete')) return Icons.star_outline;
+    if (t.contains('creat')) return Icons.add_circle_outline;
+    if (t.contains('mov'))   return Icons.swap_horiz;
+    if (t.contains('compl')) return Icons.star_outline;
     if (t.contains('assign')) return Icons.person_outline;
     if (t.contains('attach')) return Icons.attach_file_outlined;
-    if (t.contains('delete')) return Icons.delete_outline;
+    if (t.contains('delet')) return Icons.delete_outline;
     return Icons.edit_outlined;
   }
 
@@ -75,9 +73,12 @@ class _ActivityDetailScreenState extends ConsumerState<ActivityDetailScreen> {
 
   String? _attachmentId(Map<String, dynamic> m) => m['id']?.toString();
 
+  // ── Acciones ──────────────────────────────────────────────────────────────
+
   Future<void> _abrirUrl(String url) async {
     final uri = Uri.tryParse(url);
-    if (uri == null || !await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+    if (uri == null ||
+        !await launchUrl(uri, mode: LaunchMode.externalApplication)) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           AppSnackBar.aviso('No se pudo abrir el archivo'),
@@ -86,8 +87,46 @@ class _ActivityDetailScreenState extends ConsumerState<ActivityDetailScreen> {
     }
   }
 
+  Future<void> _mover(ActivityDetailBundle bundle) async {
+    mostrarMoverActividadBottomSheet(
+      context,
+      bundle.activity,
+      (nuevo) async {
+        try {
+          await ref
+              .read(activityRepositoryProvider)
+              .moveActivity(bundle.activity.id, nuevo.apiValue);
+          _invalidate();
+          if (mounted) {
+            ScaffoldMessenger.of(context)
+                .showSnackBar(AppSnackBar.exito('Estado actualizado'));
+          }
+        } catch (e) {
+          if (mounted) {
+            ScaffoldMessenger.of(context)
+                .showSnackBar(AppSnackBar.error('$e'));
+          }
+        }
+      },
+    );
+  }
+
+  Future<void> _completar(ActivityDetailBundle bundle) async {
+    try {
+      await ref
+          .read(activityRepositoryProvider)
+          .completeActivity(bundle.activity.id);
+      _invalidate();
+      if (mounted) context.go('/');
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(AppSnackBar.error('$e'));
+      }
+    }
+  }
+
   Future<void> _mostrarAsignar(ActivityDetailBundle bundle) async {
-    final repo = ref.read(activityRepositoryProvider);
+    final repo  = ref.read(activityRepositoryProvider);
     final users = await ref.read(teamMembersProvider.future);
     if (!mounted) return;
     if (users.isEmpty) {
@@ -125,9 +164,8 @@ class _ActivityDetailScreenState extends ConsumerState<ActivityDetailScreen> {
       await repo.assignActivity(bundle.activity.id, selected.id);
       _invalidate();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          AppSnackBar.exito('Asignación actualizada'),
-        );
+        ScaffoldMessenger.of(context)
+            .showSnackBar(AppSnackBar.exito('Asignación actualizada'));
       }
     } catch (e) {
       if (mounted) {
@@ -137,14 +175,14 @@ class _ActivityDetailScreenState extends ConsumerState<ActivityDetailScreen> {
   }
 
   Future<void> _quitarAsignacion(ActivityDetailBundle bundle) async {
-    final repo = ref.read(activityRepositoryProvider);
     try {
-      await repo.unassignActivity(bundle.activity.id);
+      await ref
+          .read(activityRepositoryProvider)
+          .unassignActivity(bundle.activity.id);
       _invalidate();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          AppSnackBar.exito('Asignación eliminada'),
-        );
+        ScaffoldMessenger.of(context)
+            .showSnackBar(AppSnackBar.exito('Asignación eliminada'));
       }
     } catch (e) {
       if (mounted) {
@@ -179,28 +217,31 @@ class _ActivityDetailScreenState extends ConsumerState<ActivityDetailScreen> {
         ],
       ),
     );
-    if (ok != true || ctrl.text.trim().isEmpty) return;
+    if (ok != true || ctrl.text.trim().isEmpty) {
+      ctrl.dispose();
+      return;
+    }
     final repo = ref.read(activityRepositoryProvider);
-    final a = bundle.activity;
+    final a    = bundle.activity;
     final bloque =
         '\n\n[Nota ${DateTime.now().toIso8601String().substring(0, 16)}] '
         '${ctrl.text.trim()}';
+    ctrl.dispose();
     try {
       await repo.updateActivity(a.id, {
-        'description': a.description.isEmpty ? ctrl.text.trim() : '${a.description}$bloque',
+        'description': a.description.isEmpty
+            ? bloque.trim()
+            : '${a.description}$bloque',
       });
       _invalidate();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          AppSnackBar.exito('Nota agregada a la descripción'),
-        );
+        ScaffoldMessenger.of(context)
+            .showSnackBar(AppSnackBar.exito('Nota agregada'));
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(AppSnackBar.error('$e'));
       }
-    } finally {
-      ctrl.dispose();
     }
   }
 
@@ -238,15 +279,11 @@ class _ActivityDetailScreenState extends ConsumerState<ActivityDetailScreen> {
       final x = await ImagePicker().pickImage(source: ImageSource.gallery);
       if (x == null) return;
       await ref.read(activityRepositoryProvider).uploadAttachment(
-            bundle.activity.id,
-            x.path,
-            p.basename(x.path),
-          );
+            bundle.activity.id, x.path, p.basename(x.path));
       _invalidate();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          AppSnackBar.exito('Archivo subido'),
-        );
+        ScaffoldMessenger.of(context)
+            .showSnackBar(AppSnackBar.exito('Archivo subido'));
       }
     } catch (e) {
       if (mounted) {
@@ -261,15 +298,11 @@ class _ActivityDetailScreenState extends ConsumerState<ActivityDetailScreen> {
       if (r == null || r.files.single.path == null) return;
       final path = r.files.single.path!;
       await ref.read(activityRepositoryProvider).uploadAttachment(
-            bundle.activity.id,
-            path,
-            p.basename(path),
-          );
+            bundle.activity.id, path, p.basename(path));
       _invalidate();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          AppSnackBar.exito('Archivo subido'),
-        );
+        ScaffoldMessenger.of(context)
+            .showSnackBar(AppSnackBar.exito('Archivo subido'));
       }
     } catch (e) {
       if (mounted) {
@@ -309,15 +342,13 @@ class _ActivityDetailScreenState extends ConsumerState<ActivityDetailScreen> {
     );
     if (ok != true) return;
     try {
-      await ref.read(activityRepositoryProvider).deleteAttachment(
-            bundle.activity.id,
-            attId,
-          );
+      await ref
+          .read(activityRepositoryProvider)
+          .deleteAttachment(bundle.activity.id, attId);
       _invalidate();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          AppSnackBar.exito('Archivo eliminado'),
-        );
+        ScaffoldMessenger.of(context)
+            .showSnackBar(AppSnackBar.exito('Archivo eliminado'));
       }
     } catch (e) {
       if (mounted) {
@@ -329,12 +360,12 @@ class _ActivityDetailScreenState extends ConsumerState<ActivityDetailScreen> {
   Future<void> _editarActividad(ActivityDetailBundle bundle) async {
     final projects = await ref.read(projectsProvider.future);
     if (!mounted) return;
-    final a = bundle.activity;
-    final tituloCtrl = TextEditingController(text: a.title);
-    final descCtrl = TextEditingController(text: a.description);
+    final a           = bundle.activity;
+    final tituloCtrl  = TextEditingController(text: a.title);
+    final descCtrl    = TextEditingController(text: a.description);
     ActivityStatus estadoSel = a.status;
-    String? proyectoId = a.projectId;
-    DateTime? fechaObj = a.targetDate;
+    String? proyectoId       = a.projectId;
+    DateTime? fechaObj       = a.targetDate;
 
     final ok = await showDialog<bool>(
       context: context,
@@ -348,63 +379,50 @@ class _ActivityDetailScreenState extends ConsumerState<ActivityDetailScreen> {
               children: [
                 TextField(
                   controller: tituloCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'Título *',
-                    hintText: '¿Qué necesitas hacer?',
-                  ),
+                  decoration: const InputDecoration(labelText: 'Título *'),
                   autofocus: true,
                 ),
                 const SizedBox(height: 16),
                 TextField(
                   controller: descCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'Descripción',
-                  ),
+                  decoration:
+                      const InputDecoration(labelText: 'Descripción'),
                   maxLines: 4,
                 ),
                 const SizedBox(height: 16),
-                Text('Estado', style: Theme.of(ctx).textTheme.titleSmall),
+                Text('Estado',
+                    style: Theme.of(ctx).textTheme.titleSmall),
                 const SizedBox(height: 8),
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
                   children: ActivityStatus.values
                       .where((s) => s != ActivityStatus.completada)
-                      .map((estado) {
-                    final selected = estadoSel == estado;
-                    return FilterChip(
-                      selected: selected,
-                      label: Text(estado.label),
-                      onSelected: (_) {
-                        setSt(() {
-                          estadoSel = estado;
-                          if (estadoSel != ActivityStatus.programado) {
-                            fechaObj = null;
-                          }
-                        });
-                      },
-                    );
-                  }).toList(),
+                      .map((estado) => FilterChip(
+                            selected: estadoSel == estado,
+                            label: Text(estado.label),
+                            onSelected: (_) => setSt(() {
+                              estadoSel = estado;
+                              if (estadoSel != ActivityStatus.programado) {
+                                fechaObj = null;
+                              }
+                            }),
+                          ))
+                      .toList(),
                 ),
                 if (projects.isNotEmpty) ...[
                   const SizedBox(height: 16),
                   DropdownButtonFormField<String?>(
-                    // ignore: deprecated_member_use
                     value: proyectoId,
-                    decoration: const InputDecoration(
-                      labelText: 'Proyecto',
-                    ),
+                    decoration:
+                        const InputDecoration(labelText: 'Proyecto'),
                     items: [
                       const DropdownMenuItem(
-                        value: null,
-                        child: Text('Sin proyecto'),
-                      ),
-                      ...projects.map(
-                        (p) => DropdownMenuItem(
-                          value: p.id,
-                          child: Text(p.name),
-                        ),
-                      ),
+                          value: null, child: Text('Sin proyecto')),
+                      ...projects.map((p) => DropdownMenuItem(
+                            value: p.id,
+                            child: Text(p.name),
+                          )),
                     ],
                     onChanged: (v) => setSt(() => proyectoId = v),
                   ),
@@ -412,6 +430,7 @@ class _ActivityDetailScreenState extends ConsumerState<ActivityDetailScreen> {
                 if (estadoSel == ActivityStatus.programado) ...[
                   const SizedBox(height: 16),
                   ListTile(
+                    contentPadding: EdgeInsets.zero,
                     leading: const Icon(Icons.calendar_today),
                     title: Text(
                       fechaObj != null
@@ -431,27 +450,21 @@ class _ActivityDetailScreenState extends ConsumerState<ActivityDetailScreen> {
                         context: ctx,
                         initialDate: fechaObj ?? DateTime.now(),
                         firstDate: DateTime(2000),
-                        lastDate: DateTime.now().add(const Duration(days: 3650)),
+                        lastDate:
+                            DateTime.now().add(const Duration(days: 3650)),
                       );
-                      if (d == null) return;
-                      if (!ctx.mounted) return;
+                      if (d == null || !ctx.mounted) return;
                       final t = await showTimePicker(
                         context: ctx,
                         initialTime: fechaObj != null
                             ? TimeOfDay(
-                                hour: fechaObj!.hour, minute: fechaObj!.minute)
+                                hour: fechaObj!.hour,
+                                minute: fechaObj!.minute)
                             : TimeOfDay.now(),
                       );
                       if (t != null) {
-                        setSt(() {
-                          fechaObj = DateTime(
-                            d.year,
-                            d.month,
-                            d.day,
-                            t.hour,
-                            t.minute,
-                          );
-                        });
+                        setSt(() => fechaObj = DateTime(
+                              d.year, d.month, d.day, t.hour, t.minute));
                       }
                     },
                   ),
@@ -469,11 +482,9 @@ class _ActivityDetailScreenState extends ConsumerState<ActivityDetailScreen> {
                 if (tituloCtrl.text.trim().isEmpty) return;
                 if (estadoSel == ActivityStatus.programado &&
                     fechaObj == null) {
-                  ScaffoldMessenger.of(ctx).showSnackBar(
-                    AppSnackBar.aviso(
-                      'Las actividades programadas requieren fecha objetivo',
-                    ),
-                  );
+                  ScaffoldMessenger.of(ctx).showSnackBar(AppSnackBar.aviso(
+                    'Las actividades programadas requieren fecha objetivo',
+                  ));
                   return;
                 }
                 Navigator.pop(ctx, true);
@@ -485,31 +496,30 @@ class _ActivityDetailScreenState extends ConsumerState<ActivityDetailScreen> {
       ),
     );
 
-    final titulo = tituloCtrl.text.trim();
+    final titulo     = tituloCtrl.text.trim();
     final descripcion = descCtrl.text.trim();
     tituloCtrl.dispose();
     descCtrl.dispose();
 
     if (ok != true) return;
-
     if (estadoSel == ActivityStatus.programado && fechaObj == null) return;
 
-    final repo = ref.read(activityRepositoryProvider);
-    final data = <String, dynamic>{
-      'title': titulo,
-      'description': descripcion,
-      'status': estadoSel.apiValue,
-      'project': proyectoId,
-      'target_date':
-          fechaObj?.toIso8601String().split('T').first,
-    };
     try {
-      await repo.updateActivity(bundle.activity.id, data);
+      await ref.read(activityRepositoryProvider).updateActivity(
+        bundle.activity.id,
+        {
+          'title':       titulo,
+          'description': descripcion,
+          'status':      estadoSel.apiValue,
+          'project':     proyectoId,
+          if (fechaObj != null)
+            'target_date': fechaObj!.toIso8601String().split('T').first,
+        },
+      );
       _invalidate();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          AppSnackBar.exito('Actividad actualizada'),
-        );
+        ScaffoldMessenger.of(context)
+            .showSnackBar(AppSnackBar.exito('Actividad actualizada'));
       }
     } catch (e) {
       if (mounted) {
@@ -518,430 +528,11 @@ class _ActivityDetailScreenState extends ConsumerState<ActivityDetailScreen> {
     }
   }
 
-  Widget _contenidoPrincipal(ActivityDetailBundle bundle) {
-    final a = bundle.activity;
-    final theme = Theme.of(context);
-    final estadoColor = _estadoColor(a.status);
-
-    return SingleChildScrollView(
-      padding: EdgeInsets.all(Responsive.getHorizontalPadding(context)),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            a.title,
-            style: theme.textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Chip(
-            avatar: Icon(
-              _estadoIcon(a.status),
-              size: 18,
-              color: estadoColor,
-            ),
-            label: Text(a.status.label),
-            backgroundColor: estadoColor.withValues(alpha: 0.12),
-            side: BorderSide(color: estadoColor.withValues(alpha: 0.6)),
-          ),
-          const SizedBox(height: 24),
-          if (a.description.isNotEmpty) ...[
-            Text(
-              'Descripción',
-              style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-            ),
-            const SizedBox(height: 8),
-            Text(a.description, style: theme.textTheme.bodyLarge),
-            const SizedBox(height: 24),
-          ],
-          _tarjetaInfo(bundle),
-          const SizedBox(height: 24),
-          _acciones(bundle),
-        ],
-      ),
-    );
-  }
-
-  Widget _tarjetaInfo(ActivityDetailBundle bundle) {
-    final a = bundle.activity;
-    final theme = Theme.of(context);
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Información',
-              style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-            ),
-            const SizedBox(height: 16),
-            _infoFila(Icons.person_outline, 'Creada por', a.ownerName),
-            if (a.assignedToName != null)
-              _infoFila(Icons.person, 'Asignada a', a.assignedToName!),
-            if (a.projectName != null)
-              _infoFila(Icons.folder, 'Proyecto', a.projectName!),
-            if (a.areaName != null)
-              _infoFila(Icons.business_outlined, 'Área', a.areaName!),
-            if (a.targetDate != null)
-              _infoFila(
-                Icons.calendar_today,
-                'Fecha objetivo',
-                '${a.targetDate!.day}/${a.targetDate!.month}/${a.targetDate!.year}',
-              ),
-            _infoFila(
-              Icons.access_time,
-              'Creada',
-              '${a.createdAt.day}/${a.createdAt.month}/${a.createdAt.year}',
-            ),
-            _infoFila(
-              Icons.update,
-              'Actualizada',
-              '${a.updatedAt.day}/${a.updatedAt.month}/${a.updatedAt.year}',
-            ),
-            if (a.completedAt != null)
-              _infoFila(
-                Icons.check_circle_outline,
-                'Completada',
-                '${a.completedAt!.day}/${a.completedAt!.month}/${a.completedAt!.year}',
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _infoFila(IconData icon, String etiqueta, String valor) {
-    final theme = Theme.of(context);
-    final muted = theme.colorScheme.onSurfaceVariant;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, size: 20, color: muted),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  etiqueta,
-                  style: theme.textTheme.bodySmall?.copyWith(color: muted),
-                ),
-                Text(
-                  valor,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w500,
-                      ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _acciones(ActivityDetailBundle bundle) {
-    final a = bundle.activity;
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: [
-        if (!a.isCompleted)
-          FilledButton.icon(
-            onPressed: () {
-              mostrarMoverActividadBottomSheet(
-                context,
-                a,
-                (nuevo) async {
-                  try {
-                    await ref
-                        .read(activityRepositoryProvider)
-                        .moveActivity(a.id, nuevo.apiValue);
-                    _invalidate();
-                    if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        AppSnackBar.exito('Estado actualizado'),
-                      );
-                    }
-                  } catch (e) {
-                    if (mounted) {
-                      ScaffoldMessenger.of(context)
-                          .showSnackBar(AppSnackBar.error('$e'));
-                    }
-                  }
-                },
-              );
-            },
-            icon: const Icon(Icons.swap_horiz),
-            label: const Text('Mover'),
-          ),
-        if (!a.isCompleted)
-          OutlinedButton.icon(
-            onPressed: () async {
-              try {
-                await ref
-                    .read(activityRepositoryProvider)
-                    .completeActivity(a.id);
-                _invalidate();
-                if (mounted) context.go('/');
-              } catch (e) {
-                if (mounted) {
-                  ScaffoldMessenger.of(context)
-                      .showSnackBar(AppSnackBar.error('$e'));
-                }
-              }
-            },
-            icon: const Icon(Icons.check),
-            label: const Text('Completar'),
-          ),
-      ],
-    );
-  }
-
-  Widget _sidebar(ActivityDetailBundle bundle) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-    final a = bundle.activity;
-    final muted = scheme.onSurfaceVariant;
-
-    return ColoredBox(
-      color: scheme.surfaceContainerHighest,
-      child: ListView(
-        padding: EdgeInsets.all(Responsive.getHorizontalPadding(context)),
-        children: [
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Asignar a',
-                        style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.person_add),
-                        onPressed: () => _mostrarAsignar(bundle),
-                      ),
-                    ],
-                  ),
-                  if (a.assignedToId != null && a.assignedToName != null)
-                    Chip(
-                      avatar: CircleAvatar(
-                        child: Text(
-                          a.assignedToName!.isNotEmpty
-                              ? a.assignedToName![0].toUpperCase()
-                              : '?',
-                        ),
-                      ),
-                      label: Text(a.assignedToName!),
-                      onDeleted: () => _quitarAsignacion(bundle),
-                    )
-                  else
-                    Text(
-                      'Sin asignar',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                            color: muted,
-                          ),
-                    ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Card(
-            child: ListTile(
-              leading: const Icon(Icons.note_add),
-              title: const Text('Agregar nota'),
-              onTap: () => _notaRapida(bundle),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Card(
-            child: ListTile(
-              leading: const Icon(Icons.attach_file),
-              title: const Text('Agregar archivo'),
-              onTap: () => _agregarArchivoDialog(bundle),
-            ),
-          ),
-          if (bundle.attachments.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Archivos adjuntos (${bundle.attachments.length})',
-                      style: theme.textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                    ),
-                    const SizedBox(height: 12),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: bundle.attachments.map((m) {
-                        final url = _attachmentUrl(m);
-                        final name = _attachmentName(m);
-                        return InputChip(
-                          label: Text(name, overflow: TextOverflow.ellipsis),
-                          onPressed: url != null ? () => _abrirUrl(url) : null,
-                          onDeleted: _attachmentId(m) != null
-                              ? () => _eliminarAdjunto(bundle, m)
-                              : null,
-                        );
-                      }).toList(),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-          const SizedBox(height: 16),
-          Card(
-            color: scheme.surfaceContainerHigh,
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Text(
-                        'Bitácora',
-                        style: theme.textTheme.titleLarge?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
-                      ),
-                      const SizedBox(width: 8),
-                      Icon(Icons.info_outline, size: 18, color: muted),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Historial de cambios y eventos de esta actividad',
-                    style: theme.textTheme.bodySmall?.copyWith(color: muted),
-                  ),
-                  const SizedBox(height: 16),
-                  if (bundle.logs.isEmpty)
-                    Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Center(
-                        child: Column(
-                          children: [
-                            Icon(Icons.history, size: 48, color: muted),
-                            const SizedBox(height: 8),
-                            Text(
-                              'No hay eventos registrados',
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                    color: muted,
-                                  ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    )
-                  else
-                    ...bundle.logs.map((evento) {
-                      final tipo =
-                          (evento['type'] ?? evento['action'] ?? 'evento')
-                              .toString();
-                      final desc = (evento['description'] ??
-                              evento['message'] ??
-                              '')
-                          .toString();
-                      DateTime? ts;
-                      final raw =
-                          evento['timestamp'] ?? evento['created_at'];
-                      if (raw is String) ts = DateTime.tryParse(raw);
-
-                      return Card(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        color: scheme.surface,
-                        child: Padding(
-                          padding: const EdgeInsets.all(12),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Icon(
-                                    _logIcon(tipo),
-                                    size: 20,
-                                    color: scheme.primary,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      tipo,
-                                      style: theme.textTheme.titleSmall
-                                          ?.copyWith(
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                    ),
-                                  ),
-                                  if (ts != null)
-                                    Text(
-                                      '${ts.day}/${ts.month}/${ts.year} '
-                                      '${ts.hour.toString().padLeft(2, '0')}:'
-                                      '${ts.minute.toString().padLeft(2, '0')}',
-                                      style: theme.textTheme.bodySmall
-                                          ?.copyWith(
-                                            color: muted,
-                                            fontSize: 11,
-                                          ),
-                                    ),
-                                ],
-                              ),
-                              if (desc.isNotEmpty) ...[
-                                const SizedBox(height: 8),
-                                Container(
-                                  width: double.infinity,
-                                  padding: const EdgeInsets.all(12),
-                                  decoration: BoxDecoration(
-                                    color: scheme.surfaceContainerHighest,
-                                    borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(
-                                      color: scheme.outline
-                                          .withValues(alpha: 0.2),
-                                    ),
-                                  ),
-                                  child: Text(desc),
-                                ),
-                              ],
-                            ],
-                          ),
-                        ),
-                      );
-                    }),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  // ── Build ─────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
     final async = ref.watch(activityDetailBundleProvider(widget.id));
-    final isTablet = Responsive.isTablet(context);
 
     return Scaffold(
       appBar: AppBar(
@@ -953,9 +544,89 @@ class _ActivityDetailScreenState extends ConsumerState<ActivityDetailScreen> {
         ),
         actions: [
           async.maybeWhen(
-            data: (b) => IconButton(
-              icon: const Icon(Icons.edit),
-              onPressed: () => _editarActividad(b),
+            data: (bundle) => PopupMenuButton<String>(
+              icon: const Icon(Icons.more_vert),
+              onSelected: (value) {
+                switch (value) {
+                  case 'edit':
+                    _editarActividad(bundle);
+                  case 'move':
+                    _mover(bundle);
+                  case 'complete':
+                    _completar(bundle);
+                  case 'note':
+                    _notaRapida(bundle);
+                  case 'attach':
+                    _agregarArchivoDialog(bundle);
+                  case 'assign':
+                    _mostrarAsignar(bundle);
+                  case 'unassign':
+                    _quitarAsignacion(bundle);
+                }
+              },
+              itemBuilder: (ctx) => [
+                if (!bundle.activity.isCompleted) ...[
+                  const PopupMenuItem(
+                    value: 'edit',
+                    child: ListTile(
+                      dense: true,
+                      leading: Icon(Icons.edit_outlined),
+                      title: Text('Editar'),
+                    ),
+                  ),
+                  const PopupMenuItem(
+                    value: 'move',
+                    child: ListTile(
+                      dense: true,
+                      leading: Icon(Icons.swap_horiz),
+                      title: Text('Cambiar estado'),
+                    ),
+                  ),
+                  const PopupMenuItem(
+                    value: 'complete',
+                    child: ListTile(
+                      dense: true,
+                      leading: Icon(Icons.check_circle_outline),
+                      title: Text('Completar'),
+                    ),
+                  ),
+                  const PopupMenuDivider(),
+                ],
+                const PopupMenuItem(
+                  value: 'note',
+                  child: ListTile(
+                    dense: true,
+                    leading: Icon(Icons.note_add_outlined),
+                    title: Text('Agregar nota'),
+                  ),
+                ),
+                const PopupMenuItem(
+                  value: 'attach',
+                  child: ListTile(
+                    dense: true,
+                    leading: Icon(Icons.attach_file),
+                    title: Text('Adjuntar archivo'),
+                  ),
+                ),
+                if (bundle.activity.assignedToId == null)
+                  const PopupMenuItem(
+                    value: 'assign',
+                    child: ListTile(
+                      dense: true,
+                      leading: Icon(Icons.person_add_outlined),
+                      title: Text('Asignar persona'),
+                    ),
+                  )
+                else
+                  const PopupMenuItem(
+                    value: 'unassign',
+                    child: ListTile(
+                      dense: true,
+                      leading: Icon(Icons.person_remove_outlined),
+                      title: Text('Quitar asignación'),
+                    ),
+                  ),
+              ],
             ),
             orElse: () => const SizedBox.shrink(),
           ),
@@ -983,28 +654,254 @@ class _ActivityDetailScreenState extends ConsumerState<ActivityDetailScreen> {
             ),
           ),
         ),
-        data: (bundle) => isTablet
-            ? Row(
+        data: (bundle) => _buildContent(bundle),
+      ),
+    );
+  }
+
+  Widget _buildContent(ActivityDetailBundle bundle) {
+    final a       = bundle.activity;
+    final theme   = Theme.of(context);
+    final scheme  = theme.colorScheme;
+    final muted   = scheme.onSurfaceVariant;
+    final pad     = Responsive.getHorizontalPadding(context);
+    final estadoColor = _estadoColor(a.status);
+
+    return SingleChildScrollView(
+      padding: EdgeInsets.fromLTRB(pad, 20, pad, 40),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ── Título ──────────────────────────────────────────────────────
+          Text(
+            a.title,
+            style: theme.textTheme.headlineSmall
+                ?.copyWith(fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 10),
+          // ── Estado ──────────────────────────────────────────────────────
+          Chip(
+            avatar: Icon(_estadoIcon(a.status), size: 18, color: estadoColor),
+            label: Text(a.status.label),
+            backgroundColor: estadoColor.withValues(alpha: 0.12),
+            side: BorderSide(color: estadoColor.withValues(alpha: 0.6)),
+            padding: EdgeInsets.zero,
+          ),
+          const SizedBox(height: 20),
+
+          // ── Descripción ─────────────────────────────────────────────────
+          if (a.description.isNotEmpty) ...[
+            Text('Descripción',
+                style: theme.textTheme.titleMedium
+                    ?.copyWith(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            Text(a.description, style: theme.textTheme.bodyLarge),
+            const SizedBox(height: 24),
+          ],
+
+          // ── Info ────────────────────────────────────────────────────────
+          Card(
+            margin: EdgeInsets.zero,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(flex: 2, child: _contenidoPrincipal(bundle)),
-                  const VerticalDivider(width: 1),
-                  Expanded(flex: 1, child: _sidebar(bundle)),
-                ],
-              )
-            : SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _contenidoPrincipal(bundle),
-                    const Divider(height: 1),
-                    SizedBox(
-                      height: MediaQuery.of(context).size.height * 0.55,
-                      child: _sidebar(bundle),
+                  Text('Información',
+                      style: theme.textTheme.titleMedium
+                          ?.copyWith(fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 14),
+                  _infoFila(Icons.person_outline, 'Creada por', a.ownerName),
+                  if (a.assignedToName != null)
+                    _infoFila(Icons.person, 'Asignada a', a.assignedToName!),
+                  if (a.projectName != null)
+                    _infoFila(Icons.folder, 'Proyecto', a.projectName!),
+                  if (a.areaName != null)
+                    _infoFila(
+                        Icons.business_outlined, 'Área', a.areaName!),
+                  if (a.targetDate != null)
+                    _infoFila(
+                      Icons.calendar_today,
+                      'Fecha objetivo',
+                      '${a.targetDate!.day}/${a.targetDate!.month}/${a.targetDate!.year}',
                     ),
-                  ],
+                  _infoFila(
+                    Icons.access_time,
+                    'Creada',
+                    '${a.createdAt.day}/${a.createdAt.month}/${a.createdAt.year}',
+                  ),
+                  _infoFila(
+                    Icons.update,
+                    'Actualizada',
+                    '${a.updatedAt.day}/${a.updatedAt.month}/${a.updatedAt.year}',
+                  ),
+                  if (a.completedAt != null)
+                    _infoFila(
+                      Icons.check_circle_outline,
+                      'Completada',
+                      '${a.completedAt!.day}/${a.completedAt!.month}/${a.completedAt!.year}',
+                    ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          // ── Adjuntos ────────────────────────────────────────────────────
+          if (bundle.attachments.isNotEmpty) ...[
+            Text(
+              'Archivos adjuntos (${bundle.attachments.length})',
+              style: theme.textTheme.titleMedium
+                  ?.copyWith(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: bundle.attachments.map((m) {
+                final url  = _attachmentUrl(m);
+                final name = _attachmentName(m);
+                return InputChip(
+                  label: Text(name, overflow: TextOverflow.ellipsis),
+                  onPressed: url != null ? () => _abrirUrl(url) : null,
+                  onDeleted: _attachmentId(m) != null
+                      ? () => _eliminarAdjunto(bundle, m)
+                      : null,
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 20),
+          ],
+
+          // ── Bitácora ────────────────────────────────────────────────────
+          Row(
+            children: [
+              Text('Bitácora',
+                  style: theme.textTheme.titleMedium
+                      ?.copyWith(fontWeight: FontWeight.bold)),
+              const SizedBox(width: 6),
+              Icon(Icons.history, size: 18, color: muted),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Historial de cambios de esta actividad',
+            style: theme.textTheme.bodySmall?.copyWith(color: muted),
+          ),
+          const SizedBox(height: 12),
+
+          if (bundle.logs.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              child: Center(
+                child: Text(
+                  'Sin eventos registrados',
+                  style:
+                      theme.textTheme.bodySmall?.copyWith(color: muted),
                 ),
               ),
+            )
+          else
+            ...bundle.logs.map((evento) {
+              final tipo = (evento['event_type'] ??
+                      evento['type'] ??
+                      evento['action'] ??
+                      'evento')
+                  .toString();
+
+              final rawDetail = evento['detail'] ??
+                  evento['description'] ??
+                  evento['message'];
+              final String desc;
+              if (rawDetail == null) {
+                desc = '';
+              } else if (rawDetail is Map) {
+                desc = rawDetail.entries
+                    .map((e) => '${e.key}: ${e.value}')
+                    .join(' · ');
+              } else {
+                desc = rawDetail.toString();
+              }
+
+              DateTime? ts;
+              final raw = evento['timestamp'] ?? evento['created_at'];
+              if (raw is String) ts = DateTime.tryParse(raw);
+
+              return Card(
+                margin: const EdgeInsets.only(bottom: 10),
+                color: scheme.surfaceContainerHigh,
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(_logIcon(tipo),
+                              size: 18, color: scheme.primary),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              tipo,
+                              style: theme.textTheme.labelMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          if (ts != null)
+                            Text(
+                              '${ts.day}/${ts.month}/${ts.year} '
+                              '${ts.hour.toString().padLeft(2, '0')}:'
+                              '${ts.minute.toString().padLeft(2, '0')}',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: muted,
+                                fontSize: 11,
+                              ),
+                            ),
+                        ],
+                      ),
+                      if (desc.isNotEmpty) ...[
+                        const SizedBox(height: 6),
+                        Text(
+                          desc,
+                          style: theme.textTheme.bodySmall
+                              ?.copyWith(color: muted),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              );
+            }),
+        ],
+      ),
+    );
+  }
+
+  Widget _infoFila(IconData icon, String etiqueta, String valor) {
+    final theme = Theme.of(context);
+    final muted = theme.colorScheme.onSurfaceVariant;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 18, color: muted),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(etiqueta,
+                    style:
+                        theme.textTheme.bodySmall?.copyWith(color: muted)),
+                Text(valor,
+                    style: theme.textTheme.bodyMedium
+                        ?.copyWith(fontWeight: FontWeight.w500)),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

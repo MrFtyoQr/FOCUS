@@ -13,8 +13,9 @@ class ApiEndpoints {
 
   // Users
   static const users       = '/users/';
-  static const inviteUser  = '/users/invite/';
-  static const acceptInvite = '/users/accept-invite/';
+  static const inviteUser    = '/users/invite/';
+  static const verifyInvite  = '/users/invite/verify/';
+  static const acceptInvite  = '/users/accept-invite/';
   static String userDetail(String id) => '/users/$id/';
 
   // Areas

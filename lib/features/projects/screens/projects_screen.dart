@@ -4,7 +4,8 @@ import 'package:go_router/go_router.dart';
 import '../providers/projects_provider.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../dashboard/providers/dashboard_provider.dart';
-import '../../stats/providers/stats_provider.dart';
+import '../../team/data/team_repository.dart';
+import '../../team/providers/team_provider.dart';
 import '../../../shared/enums/activity_status.dart';
 import '../../../shared/models/activity.dart';
 import '../../../shared/models/project.dart';
@@ -79,10 +80,19 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
     if (user == null) return;
 
     final isSa = user.isSuperAdmin;
+    // Obtiene áreas reales del backend (GET /api/areas/) en vez de stats.
     List<Map<String, dynamic>> areasList = [];
     if (isSa) {
       try {
-        areasList = await ref.read(allAreasStatsProvider.future);
+        final raw = await ref.read(teamRepositoryProvider).getAreas();
+        // Normaliza a {area_id, area_name} para mantener compatibilidad con el diálogo.
+        areasList = raw
+            .map((a) => {
+                  'area_id':   a['id']   as String? ?? '',
+                  'area_name': a['name'] as String? ?? '',
+                  'admin_name': '',
+                })
+            .toList();
       } catch (_) {}
     }
 
@@ -138,7 +148,9 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
                     title: const Text('Personal (sin área)'),
                     subtitle: const Text('Solo visible en tus proyectos personales'),
                     value: false,
+                    // ignore: deprecated_member_use
                     groupValue: asignarAA,
+                    // ignore: deprecated_member_use
                     onChanged: (v) =>
                         setDialogState(() => asignarAA = v ?? false),
                   ),
@@ -146,7 +158,9 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
                     title: const Text('Para un administrador de área'),
                     subtitle: const Text('Asignado a un equipo'),
                     value: true,
+                    // ignore: deprecated_member_use
                     groupValue: asignarAA,
+                    // ignore: deprecated_member_use
                     onChanged: (v) =>
                         setDialogState(() => asignarAA = v ?? false),
                   ),
@@ -154,7 +168,7 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
                     const SizedBox(height: 8),
                     if (areasList.isEmpty)
                       Text(
-                        'No hay áreas en el mock. Usa proyecto personal o configura áreas.',
+                        'No hay áreas creadas todavía. Ve a Equipo → crea un área primero.',
                         style: TextStyle(
                           color: Theme.of(ctx).colorScheme.error,
                           fontSize: 13,
