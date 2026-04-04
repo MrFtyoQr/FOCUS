@@ -72,6 +72,7 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
 
   bool _showTabBar(UserModel u) {
     if (u.isPersonalAccount) return false;
+    if (u.isTrabajador) return false;
     return true;
   }
 
@@ -306,8 +307,6 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
 
     final nombre = nombreController.text.trim();
     final desc = descripcionController.text.trim();
-    nombreController.dispose();
-    descripcionController.dispose();
 
     if (resultado != true || nombre.isEmpty) return;
 

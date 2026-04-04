@@ -38,6 +38,7 @@ class TeamRepository {
     final results = response.data['results'] as List? ?? response.data as List;
     return results
         .map((e) => UserModel.fromJson(e as Map<String, dynamic>))
+        .where((u) => u.isAdminArea)
         .toList();
   }
 
@@ -58,7 +59,7 @@ class TeamRepository {
   Future<List<Map<String, dynamic>>> getAreas() async {
     final response = await _api.get(ApiEndpoints.areas);
     final list = response.data['results'] as List? ?? response.data as List;
-    return list.cast<Map<String, dynamic>>();
+    return list.map((e) => e as Map<String, dynamic>).toList();
   }
 
   /// Crea un área. Retorna: {id, name, description?}
