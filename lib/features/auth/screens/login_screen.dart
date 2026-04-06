@@ -1,11 +1,20 @@
+import 'dart:ui' show lerpDouble;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../providers/auth_provider.dart';
 import '../../../core/utils/responsive.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
-  const LoginScreen({super.key});
+  const LoginScreen({
+    super.key,
+    /// Tras el splash: el bloque de marca sube desde el centro hacia la cabecera.
+    this.entryFromSplash = false,
+  });
+
+  final bool entryFromSplash;
 
   @override
   ConsumerState<LoginScreen> createState() => _LoginScreenState();
@@ -13,8 +22,10 @@ class LoginScreen extends ConsumerStatefulWidget {
 
 class _LoginScreenState extends ConsumerState<LoginScreen>
     with SingleTickerProviderStateMixin {
-  late AnimationController _animationController;
-  late Animation<double> _rotationAnimation;
+  static const _brandImageAsset = 'assets/images/target4.png';
+  static const _brandSlideDuration = Duration(milliseconds: 720);
+
+  late final AnimationController _brandSlideController;
   final _formKey           = GlobalKey<FormState>();
   final _emailController   = TextEditingController();
   final _passwordController = TextEditingController();
@@ -23,18 +34,22 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   @override
   void initState() {
     super.initState();
-    _animationController = AnimationController(
+    _brandSlideController = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 20),
-    )..repeat();
-    _rotationAnimation = Tween<double>(begin: 0, end: 2 * 3.14159).animate(
-      CurvedAnimation(parent: _animationController, curve: Curves.linear),
+      duration: _brandSlideDuration,
     );
+    if (widget.entryFromSplash) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _brandSlideController.forward();
+      });
+    } else {
+      _brandSlideController.value = 1;
+    }
   }
 
   @override
   void dispose() {
-    _animationController.dispose();
+    _brandSlideController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
@@ -60,91 +75,41 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     final colorScheme = theme.colorScheme;
 
     return Scaffold(
-      body: Stack(
-        children: [
-          // Fondo animado
-          AnimatedBuilder(
-            animation: _rotationAnimation,
-            builder: (context, child) => Transform.rotate(
-              angle: _rotationAnimation.value,
-              child: Container(
-                width: double.infinity,
-                height: double.infinity,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      colorScheme.primaryContainer.withValues(alpha: 0.3),
-                      colorScheme.secondaryContainer.withValues(alpha: 0.2),
-                      colorScheme.tertiaryContainer.withValues(alpha: 0.3),
-                    ],
-                  ),
-                ),
-                child: Center(
-                  child: Opacity(
-                    opacity: 0.15,
-                    child: Image.asset(
-                      'assets/images/hipericon.png',
-                      width:  isDesktop ? 600 : isTablet ? 400 : 300,
-                      height: isDesktop ? 600 : isTablet ? 400 : 300,
-                      fit: BoxFit.contain,
-                      errorBuilder: (_, __, ___) => const SizedBox.shrink(),
-                    ),
-                  ),
-                ),
-              ),
+      backgroundColor: colorScheme.surface,
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: EdgeInsets.symmetric(
+              horizontal: Responsive.getHorizontalPadding(context),
+              vertical: 24,
             ),
-          ),
-          // Overlay de gradiente
-          Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  colorScheme.surface.withValues(alpha: 0.85),
-                  colorScheme.surface.withValues(alpha: 0.90),
-                  colorScheme.surface.withValues(alpha: 0.95),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxWidth: isDesktop ? 500 : isTablet ? 450 : double.infinity,
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _buildHeader(context, isDesktop, isTablet),
+                  SizedBox(height: isDesktop ? 40 : isTablet ? 32 : 24),
+                  _buildForm(context, isDesktop, isTablet, isLoading, errorMsg),
                 ],
               ),
             ),
           ),
-          // Contenido
-          SafeArea(
-            child: Center(
-              child: SingleChildScrollView(
-                padding: EdgeInsets.symmetric(
-                  horizontal: Responsive.getHorizontalPadding(context),
-                  vertical: 24,
-                ),
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(
-                    maxWidth: isDesktop ? 500 : isTablet ? 450 : double.infinity,
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      _buildHeader(context, isDesktop, isTablet),
-                      SizedBox(height: isDesktop ? 40 : isTablet ? 32 : 24),
-                      _buildForm(context, isDesktop, isTablet, isLoading, errorMsg),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
 
   Widget _buildHeader(BuildContext context, bool isDesktop, bool isTablet) {
-    final theme    = Theme.of(context);
+    final theme = Theme.of(context);
     final logoSize = isDesktop ? 100.0 : isTablet ? 88.0 : 72.0;
+    final h = MediaQuery.sizeOf(context).height;
+    final slideFrom = (h * 0.26).clamp(120.0, 260.0);
 
-    return Column(
+    final header = Column(
       children: [
         Container(
           padding: const EdgeInsets.all(16),
@@ -154,15 +119,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
             boxShadow: [
               BoxShadow(
                 color: theme.colorScheme.primary.withValues(alpha: 0.2),
-                blurRadius: 20, spreadRadius: 5,
+                blurRadius: 20,
+                spreadRadius: 5,
               ),
             ],
           ),
           child: Image.asset(
-            'assets/images/hipericon.png',
-            width: logoSize, height: logoSize, fit: BoxFit.contain,
+            _brandImageAsset,
+            width: logoSize,
+            height: logoSize,
+            fit: BoxFit.contain,
+            filterQuality: FilterQuality.high,
             errorBuilder: (_, __, ___) => Icon(
-              Icons.bolt_rounded,
+              Icons.center_focus_strong_rounded,
               size: logoSize,
               color: theme.colorScheme.primary,
             ),
@@ -170,10 +139,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
         ),
         SizedBox(height: isDesktop ? 24 : isTablet ? 20 : 16),
         Text(
-          'HiperApp',
-          style: theme.textTheme.displayMedium?.copyWith(
-            fontWeight: FontWeight.bold,
+          'FOCUS',
+          style: GoogleFonts.inter(
+            fontSize: isDesktop ? 40 : isTablet ? 36 : 32,
+            fontWeight: FontWeight.w700,
             color: theme.colorScheme.onSurface,
+            height: 1.1,
           ),
         ),
         const SizedBox(height: 8),
@@ -185,6 +156,24 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
           textAlign: TextAlign.center,
         ),
       ],
+    );
+
+    if (!widget.entryFromSplash) return header;
+
+    return AnimatedBuilder(
+      animation: _brandSlideController,
+      builder: (context, _) {
+        final t = Curves.easeOutCubic.transform(_brandSlideController.value);
+        final dy = lerpDouble(slideFrom, 0, t)!;
+        final o = lerpDouble(0.88, 1.0, t)!;
+        return Opacity(
+          opacity: o,
+          child: Transform.translate(
+            offset: Offset(0, dy),
+            child: header,
+          ),
+        );
+      },
     );
   }
 
@@ -295,9 +284,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
             onPressed: () => context.go('/join'),
             icon: const Icon(Icons.vpn_key_outlined, size: 20),
             label: const Text('Tengo un código de invitación'),
-            style: TextButton.styleFrom(
-              foregroundColor: theme.colorScheme.secondary,
-            ),
           ),
         ],
       ),

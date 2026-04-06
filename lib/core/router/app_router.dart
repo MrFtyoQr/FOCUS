@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../features/auth/providers/auth_provider.dart';
 import '../../features/auth/screens/login_screen.dart';
+import '../../features/auth/screens/startup_animation_screen.dart';
 import '../../features/auth/screens/register_screen.dart';
 import '../../features/auth/screens/onboarding_screen.dart';
 import '../../features/auth/screens/biometric_screen.dart';
@@ -52,28 +53,42 @@ final _authRouterNotifierProvider =
 
 // ── Router principal ──────────────────────────────────────────────────────────
 final routerProvider = Provider<GoRouter>((ref) {
-  final notifier = ref.watch(_authRouterNotifierProvider);
+  // `read`: un solo GoRouter durante toda la vida de la app. Si se usara `watch`
+  // sobre el ChangeNotifier, cada cambio de auth recrearía el router y volvería a
+  // `initialLocation` (/splash), mostrando la animación otra vez al iniciar sesión.
+  final notifier = ref.read(_authRouterNotifierProvider);
 
   return GoRouter(
-    initialLocation: '/login',
-    // refreshListenable re-evalúa el redirect cuando el notifier dispara,
-    // SIN crear un nuevo GoRouter (la pantalla actual no se reconstruye).
+    initialLocation: '/splash',
     refreshListenable: notifier,
     redirect: (context, state) async {
       final authStatus = notifier.authState.status;
       final path       = state.matchedLocation;
 
-      if (authStatus == AuthStatus.loading) return '/loading';
+      // Animación de inicio: si la sesión aún se resuelve, quedarse en /splash
+      if (authStatus == AuthStatus.loading) {
+        if (path == '/splash') return null;
+        return '/loading';
+      }
 
       final isAuthenticated = authStatus == AuthStatus.authenticated;
+
+      if (isAuthenticated && path == '/loading') {
+        final onboardingDone = await LocalPrefs.instance.isOnboardingCompleted();
+        return onboardingDone ? '/' : '/onboarding';
+      }
 
       // Flujos de invitación — siempre permitir sin auth
       if (path.startsWith('/invite/') || path == '/join') return null;
 
       if (!isAuthenticated) {
-        final allowed = {'/login', '/register', '/loading'};
+        if (path == '/loading') return '/login';
+        final allowed = {'/login', '/register', '/splash'};
         return allowed.contains(path) ? null : '/login';
       }
+
+      // Dejar terminar la animación de inicio (también con sesión ya restaurada)
+      if (path == '/splash') return null;
 
       // Autenticado — revisar onboarding
       final onboardingDone = await LocalPrefs.instance.isOnboardingCompleted();
@@ -85,14 +100,23 @@ final routerProvider = Provider<GoRouter>((ref) {
       return null;
     },
     routes: [
-      // Splash de carga
+      GoRoute(
+        path: '/splash',
+        builder: (_, __) => const StartupAnimationScreen(),
+      ),
+      // Splash de carga (auth aún resolviéndose tras animación)
       GoRoute(
         path: '/loading',
         builder: (_, __) => const _LoadingScreen(),
       ),
 
       // Auth
-      GoRoute(path: '/login',      builder: (_, __) => const LoginScreen()),
+      GoRoute(
+        path: '/login',
+        builder: (context, state) => LoginScreen(
+          entryFromSplash: state.extra == true,
+        ),
+      ),
       GoRoute(path: '/register',   builder: (_, __) => const RegisterScreen()),
       GoRoute(path: '/onboarding', builder: (_, __) => const OnboardingScreen()),
       GoRoute(path: '/biometric',  builder: (_, __) => const BiometricScreen()),
