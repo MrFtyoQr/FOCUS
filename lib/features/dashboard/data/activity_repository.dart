@@ -59,7 +59,7 @@ class ActivityRepository {
   }
 
   Future<ActivityModel> moveActivity(String id, String status) async {
-    final response = await _api.patch(
+    final response = await _api.post(
       ApiEndpoints.activityMove(id),
       data: {'status': status},
     );
@@ -72,16 +72,16 @@ class ActivityRepository {
   }
 
   Future<ActivityModel> assignActivity(String id, String assignedToId) async {
-    final response = await _api.patch(
+    final response = await _api.post(
       ApiEndpoints.activityAssign(id),
       data: {'assigned_to': assignedToId},
     );
     return ActivityModel.fromJson(response.data as Map<String, dynamic>);
   }
 
-  /// Quita la asignación (`assigned_to: null`). Si el backend no lo acepta, ajustar aquí.
+  /// Quita la asignación (`assigned_to: null`).
   Future<ActivityModel> unassignActivity(String id) async {
-    final response = await _api.patch(
+    final response = await _api.post(
       ApiEndpoints.activityAssign(id),
       data: {'assigned_to': null},
     );
