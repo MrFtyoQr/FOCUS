@@ -44,11 +44,17 @@ class AuthInterceptor extends Interceptor {
       return handler.next(err);
     }
 
+    // Si ya hay un refresh en curso, encolar y esperar su resultado.
     if (_isRefreshing) {
       final pending = _PendingRequest(err.requestOptions);
       _pendingRequests.add(pending);
-      final response = await pending.future;
-      return handler.resolve(response);
+      try {
+        final response = await pending.future;
+        return handler.resolve(response);
+      } catch (e) {
+        // El refresh principal falló — rechazar esta request también.
+        return handler.next(err);
+      }
     }
 
     _isRefreshing = true;
@@ -58,11 +64,18 @@ class AuthInterceptor extends Interceptor {
       if (refreshToken == null) {
         debugPrint('[AUTH] Sin refresh token — forzando logout');
         await _forceLogout();
+        _rejectPending(err);
         return handler.next(err);
       }
 
       debugPrint('[AUTH] Token expirado, intentando refresh…');
-      final refreshDio = Dio(BaseOptions(baseUrl: _dio.options.baseUrl));
+      final refreshDio = Dio(
+        BaseOptions(
+          baseUrl: _dio.options.baseUrl,
+          connectTimeout: const Duration(seconds: 10),
+          receiveTimeout: const Duration(seconds: 10),
+        ),
+      );
       final response = await refreshDio.post(
         ApiEndpoints.refresh,
         data: {'refresh': refreshToken},
@@ -79,6 +92,7 @@ class AuthInterceptor extends Interceptor {
       err.requestOptions.headers['Authorization'] = 'Bearer $newAccess';
       final retryResponse = await _dio.fetch(err.requestOptions);
 
+      // Resolver todas las requests que estaban esperando.
       for (final pending in _pendingRequests) {
         pending.resolve(retryResponse);
       }
@@ -86,12 +100,23 @@ class AuthInterceptor extends Interceptor {
 
       handler.resolve(retryResponse);
     } catch (e) {
+      // Refresh falló (500, red, token expirado definitivamente).
+      // CRÍTICO: rechazar todas las requests en cola para evitar deadlock.
       debugPrint('[AUTH] Refresh fallido ($e) — forzando logout');
       await _forceLogout();
+      _rejectPending(err);
       handler.next(err);
     } finally {
       _isRefreshing = false;
     }
+  }
+
+  /// Rechaza y limpia todas las requests pendientes para evitar deadlock.
+  void _rejectPending(DioException originalErr) {
+    for (final pending in _pendingRequests) {
+      pending.reject(originalErr);
+    }
+    _pendingRequests.clear();
   }
 
   Future<void> _forceLogout() async {
@@ -102,11 +127,13 @@ class AuthInterceptor extends Interceptor {
 class _PendingRequest {
   final RequestOptions options;
   late final void Function(Response) resolve;
+  late final void Function(DioException) reject;
   late final Future<Response> future;
 
   _PendingRequest(this.options) {
     final completer = Completer<Response>();
     future  = completer.future;
     resolve = completer.complete;
+    reject  = (err) => completer.completeError(err);
   }
 }

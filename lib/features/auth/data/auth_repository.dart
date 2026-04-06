@@ -68,9 +68,9 @@ class AuthRepository {
   /// es inválido, expirado o ya fue usado.
   Future<InviteInfo> verifyInviteCode(String code) async {
     try {
-      final response = await _api.post(
+      final response = await _api.get(
         ApiEndpoints.verifyInvite,
-        data: {'code': code},
+        params: {'code': code},
       );
       return InviteInfo.fromJson(response.data as Map<String, dynamic>);
     } on DioException catch (e) {

@@ -3,6 +3,7 @@ import '../data/activity_repository.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../projects/providers/projects_provider.dart';
 import '../../../shared/models/activity.dart';
+import '../../../shared/models/project.dart';
 import '../../../shared/enums/activity_status.dart';
 import '../../../shared/enums/user_role.dart';
 import '../../../core/utils/activity_scope.dart';
@@ -27,7 +28,9 @@ final dashboardProvider =
   final scopeUi = ref.watch(dashboardScopeUiProvider);
   final repo = ref.read(activityRepositoryProvider);
   final all = await repo.getActivities();
-  final projects = await ref.watch(projectsProvider.future);
+  // Si el backend de proyectos falla (500, red, etc.) el tablero sigue
+  // mostrando actividades. Los proyectos simplemente aparecen vacíos.
+  final projects = await ref.watch(projectsProvider.future).catchError((_) => <ProjectModel>[]);
   final byId = projectMap(projects);
 
   // personal account: siempre personal. SA y org: respetan el selector UI.
