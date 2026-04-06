@@ -886,22 +886,33 @@ class _WorkerProductividadScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(currentUserProvider);
     final async = ref.watch(allActivitiesProvider);
-    final asyncProj = ref.watch(projectsProvider);
+    // valueOrNull: si proyectos aún carga o falla, usamos lista vacía
+    // en lugar de bloquear toda la pantalla con otro spinner.
+    final projects = ref.watch(projectsProvider).valueOrNull ?? [];
 
-    if (user == null) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
-    }
-
-    return async.when(
-      loading: () => Scaffold(
-        appBar: AppBar(title: const Text('Productividad')),
-        body: const Center(child: CircularProgressIndicator()),
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Productividad'),
+        elevation: 0,
+        actions: [
+          if (user != null && !user.isPersonalAccount)
+            IconButton(
+              icon: const Icon(Icons.notifications_active),
+              tooltip: 'Notificaciones',
+              onPressed: () => _mostrarMenuNotificaciones(context),
+            ),
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () {
+              ref.invalidate(allActivitiesProvider);
+              ref.invalidate(projectsProvider);
+            },
+          ),
+        ],
       ),
-      error: (e, _) => Scaffold(
-        appBar: AppBar(title: const Text('Productividad')),
-        body: Center(
+      body: async.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, _) => Center(
           child: Padding(
             padding: const EdgeInsets.all(24),
             child: Column(
@@ -919,17 +930,10 @@ class _WorkerProductividadScreen extends ConsumerWidget {
             ),
           ),
         ),
-      ),
-      data: (todas) => asyncProj.when(
-        loading: () => Scaffold(
-          appBar: AppBar(title: const Text('Productividad')),
-          body: const Center(child: CircularProgressIndicator()),
-        ),
-        error: (_, __) => Scaffold(
-          appBar: AppBar(title: const Text('Productividad')),
-          body: const Center(child: Text('No se cargaron proyectos')),
-        ),
-        data: (projects) {
+        data: (todas) {
+          if (user == null) {
+            return const Center(child: CircularProgressIndicator());
+          }
           final byId = projectMap(projects);
           final pers = personalActivitiesForStats(user, todas, byId);
           final team = user.isPersonalAccount
@@ -937,50 +941,29 @@ class _WorkerProductividadScreen extends ConsumerWidget {
               : teamActivitiesForStats(user, todas, byId);
           final showTeam = !user.isPersonalAccount;
 
-          return Scaffold(
-            appBar: AppBar(
-              title: const Text('Productividad'),
-              elevation: 0,
-              actions: [
-                if (!user.isPersonalAccount)
-                  IconButton(
-                    icon: const Icon(Icons.notifications_active),
-                    tooltip: 'Notificaciones',
-                    onPressed: () => _mostrarMenuNotificaciones(context),
-                  ),
-                IconButton(
-                  icon: const Icon(Icons.refresh),
-                  onPressed: () {
-                    ref.invalidate(allActivitiesProvider);
-                    ref.invalidate(projectsProvider);
-                  },
-                ),
-              ],
-            ),
-            body: RefreshIndicator(
-              onRefresh: () async {
-                ref.invalidate(allActivitiesProvider);
-                ref.invalidate(projectsProvider);
-                await ref.read(allActivitiesProvider.future);
-              },
-              child: ListView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding:
-                    EdgeInsets.all(Responsive.getHorizontalPadding(context)),
-                children: [
-                  const _SectionTitle('Actividades personales'),
+          return RefreshIndicator(
+            onRefresh: () async {
+              ref.invalidate(allActivitiesProvider);
+              ref.invalidate(projectsProvider);
+              await ref.read(allActivitiesProvider.future);
+            },
+            child: ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding:
+                  EdgeInsets.all(Responsive.getHorizontalPadding(context)),
+              children: [
+                const _SectionTitle('Actividades personales'),
+                const SizedBox(height: 8),
+                _ProductividadMetricsColumn(todas: pers),
+                if (showTeam) ...[
+                  const SizedBox(height: 24),
+                  const Divider(height: 1),
+                  const SizedBox(height: 16),
+                  const _SectionTitle('Actividades de equipo'),
                   const SizedBox(height: 8),
-                  _ProductividadMetricsColumn(todas: pers),
-                  if (showTeam) ...[
-                    const SizedBox(height: 24),
-                    const Divider(height: 1),
-                    const SizedBox(height: 16),
-                    const _SectionTitle('Actividades de equipo'),
-                    const SizedBox(height: 8),
-                    _ProductividadMetricsColumn(todas: team),
-                  ],
+                  _ProductividadMetricsColumn(todas: team),
                 ],
-              ),
+              ],
             ),
           );
         },
