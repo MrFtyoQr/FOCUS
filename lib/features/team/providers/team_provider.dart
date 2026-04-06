@@ -33,8 +33,14 @@ class TeamScreenData {
 }
 
 final teamScreenDataProvider = FutureProvider<TeamScreenData>((ref) async {
-  final members = await ref.read(teamRepositoryProvider).getTeamMembers();
-  final activities = await ref.read(activityRepositoryProvider).getActivities();
+  final members = await ref
+      .read(teamRepositoryProvider)
+      .getTeamMembers()
+      .catchError((_) => <UserModel>[]);
+  final activities = await ref
+      .read(activityRepositoryProvider)
+      .getActivities()
+      .catchError((_) => <ActivityModel>[]);
   final map = <String, List<ActivityModel>>{};
   for (final a in activities) {
     final id = a.assignedToId;
@@ -64,9 +70,18 @@ class SaTeamAdminCardData {
 final teamScreenSaDataProvider =
     FutureProvider<List<SaTeamAdminCardData>>((ref) async {
   final repo = ref.read(teamRepositoryProvider);
-  final admins = await repo.getAreaAdmins();
-  final allProjects = await ref.read(projectsProvider.future);
-  final activities = await ref.read(activityRepositoryProvider).getActivities();
+  // Si el backend falla (timeout, 500) devolvemos listas vacías en lugar de
+  // propagar la excepción y romper toda la pantalla Equipo.
+  final admins = await repo
+      .getAreaAdmins()
+      .catchError((_) => <UserModel>[]);
+  final allProjects = await ref
+      .read(projectsProvider.future)
+      .catchError((_) => <ProjectModel>[]);
+  final activities = await ref
+      .read(activityRepositoryProvider)
+      .getActivities()
+      .catchError((_) => <ActivityModel>[]);
 
   final out = <SaTeamAdminCardData>[];
   for (final aa in admins) {
