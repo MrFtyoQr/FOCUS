@@ -1,10 +1,10 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/projects_provider.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../dashboard/providers/dashboard_provider.dart';
-import '../../team/data/team_repository.dart';
 import '../../team/providers/team_provider.dart';
 import '../../../shared/enums/activity_status.dart';
 import '../../../shared/models/activity.dart';
@@ -408,21 +408,42 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
               ),
               const SizedBox(height: 14),
               Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Icon(
-                    Icons.manage_accounts_outlined,
+                    Icons.domain_outlined,
                     size: 20,
                     color: scheme.onSurfaceVariant,
                   ),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: Text(
-                      proyecto.areaAdminName?.isNotEmpty == true
-                          ? proyecto.areaAdminName!
-                          : (proyecto.areaName ?? 'Área asignada'),
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.w600,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          proyecto.areaName?.trim().isNotEmpty == true
+                              ? proyecto.areaName!.trim()
+                              : 'Sin área vinculada',
+                          style: Theme.of(context)
+                              .textTheme
+                              .titleSmall
+                              ?.copyWith(fontWeight: FontWeight.w600),
+                        ),
+                        if (proyecto.areaAdminName != null &&
+                            proyecto.areaAdminName!.trim().isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 2),
+                            child: Text(
+                              'Administrador: ${proyecto.areaAdminName}',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodySmall
+                                  ?.copyWith(
+                                    color: scheme.onSurfaceVariant,
+                                  ),
+                            ),
                           ),
+                      ],
                     ),
                   ),
                 ],
@@ -769,7 +790,42 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
                 ),
               ),
               data: (allProjects) {
-                final visible = _projectsForTab(user, allProjects);
+                final areasRaw =
+                    ref.watch(areasCatalogProvider).valueOrNull ?? [];
+                final areaIdToName = <String, String>{
+                  for (final a in areasRaw)
+                    if (a['id'] is String && a['name'] is String)
+                      a['id'] as String: a['name'] as String,
+                };
+                final projectsEnriched = allProjects.map((p) {
+                  if (p.areaId == null) return p;
+                  if (p.areaName != null && p.areaName!.trim().isNotEmpty) {
+                    return p;
+                  }
+                  final n = areaIdToName[p.areaId!];
+                  if (n == null || n.isEmpty) return p;
+                  return p.copyWith(areaName: n);
+                }).toList();
+
+                final visible = _projectsForTab(user, projectsEnriched);
+                if (kDebugMode) {
+                  debugPrint(
+                    '[PROJECTS][SCREEN] role=${user.role.name} '
+                    'tab=${_tab.name} '
+                    'all=${allProjects.length} '
+                    'enriched=${projectsEnriched.length} '
+                    'visible=${visible.length}',
+                  );
+                  for (final p in visible) {
+                    debugPrint(
+                      '[PROJECTS][SCREEN] visible id=${p.id} '
+                      'name=${p.name} '
+                      'areaId=${p.areaId} '
+                      'areaName=${p.areaName} '
+                      'areaAdminName=${p.areaAdminName}',
+                    );
+                  }
+                }
 
                 if (visible.isEmpty) {
                   return Column(

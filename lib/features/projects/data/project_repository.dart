@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import '../../../core/api/api_client.dart';
 import '../../../core/api/api_endpoints.dart';
 import '../../../shared/models/project.dart';
@@ -9,9 +10,39 @@ class ProjectRepository {
   Future<List<ProjectModel>> getProjects() async {
     final response = await _api.get(ApiEndpoints.projects);
     final results  = response.data['results'] as List? ?? response.data as List;
-    return results
+    if (kDebugMode) {
+      debugPrint('[PROJECTS][API] total raw: ${results.length}');
+      for (final raw in results) {
+        if (raw is Map<String, dynamic>) {
+          debugPrint(
+            '[PROJECTS][API] id=${raw['id']} '
+            'name=${raw['name']} '
+            'area=${raw['area']} '
+            'area_name=${raw['area_name']} '
+            'area_admin_name=${raw['area_admin_name']} '
+            'created_by=${raw['created_by']}',
+          );
+        } else {
+          debugPrint('[PROJECTS][API] raw item (no map): $raw');
+        }
+      }
+    }
+    final parsed = results
         .map((e) => ProjectModel.fromJson(e as Map<String, dynamic>))
         .toList();
+    if (kDebugMode) {
+      for (final p in parsed) {
+        debugPrint(
+          '[PROJECTS][PARSED] id=${p.id} '
+          'name=${p.name} '
+          'areaId=${p.areaId} '
+          'areaName=${p.areaName} '
+          'areaAdminName=${p.areaAdminName} '
+          'createdById=${p.createdById}',
+        );
+      }
+    }
+    return parsed;
   }
 
   Future<ProjectModel> getProject(String id) async {

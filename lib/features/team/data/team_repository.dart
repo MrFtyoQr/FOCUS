@@ -29,6 +29,20 @@ class TeamRepository {
         .toList();
   }
 
+  /// Trabajadores de la organización (mismo contrato que `GET /api/users/?role=trabajador`).
+  Future<List<UserModel>> getWorkers() async {
+    final response = await _api.get(
+      ApiEndpoints.users,
+      params: {'role': 'trabajador'},
+    );
+    final results =
+        response.data['results'] as List? ?? response.data as List;
+    return results
+        .map((e) => UserModel.fromJson(e as Map<String, dynamic>))
+        .where((u) => u.isTrabajador)
+        .toList();
+  }
+
   /// Admins de área de toda la organización (vista Super Admin — Equipo).
   Future<List<UserModel>> getAreaAdmins() async {
     final response = await _api.get(

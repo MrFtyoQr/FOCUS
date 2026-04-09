@@ -90,33 +90,67 @@ class ActivityCard extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
               ),
             ],
-            const SizedBox(height: 8),
-            Row(
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                if (activity.isAssigned) ...[
-                  _AssignedBadge(assignedBy: activity.assignedByName ?? ''),
-                  const SizedBox(width: 6),
-                ],
-                if (activity.projectName != null)
+                if (activity.assignedToId != null)
+                  _AssigneeChip(
+                    assigneeName: activity.assignedToName ?? 'Usuario',
+                  ),
+                if (activity.projectId != null &&
+                    (activity.projectName ?? '').trim().isNotEmpty)
                   _ProjectChip(
-                    name: activity.projectName!,
+                    name: activity.projectName!.trim(),
+                    colorHex: projectColorHex,
+                  )
+                else if (activity.projectId != null)
+                  _ProjectChip(
+                    name: 'Proyecto',
                     colorHex: projectColorHex,
                   ),
-                const Spacer(),
                 if (activity.targetDate != null)
-                  Text(
-                    _formatDate(activity.targetDate!),
-                    style: AppTextStyles.caption.copyWith(
-                      color: activity.status == ActivityStatus.programado
-                          ? ActivityStatusColors.forStatus(
-                              ActivityStatus.programado,
-                              brightness: brightness,
-                            )
-                          : scheme.onSurfaceVariant,
+                  Padding(
+                    padding: const EdgeInsets.only(left: 4),
+                    child: Text(
+                      _formatDate(activity.targetDate!),
+                      style: AppTextStyles.caption.copyWith(
+                        color: activity.status == ActivityStatus.programado
+                            ? ActivityStatusColors.forStatus(
+                                ActivityStatus.programado,
+                                brightness: brightness,
+                              )
+                            : scheme.onSurfaceVariant,
+                      ),
                     ),
                   ),
               ],
             ),
+            if (activity.ownerName.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Icon(
+                    Icons.person_outline,
+                    size: 16,
+                    color: scheme.onSurfaceVariant,
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      'Creada por ${activity.ownerName}',
+                      style: AppTextStyles.caption.copyWith(
+                        color: scheme.onSurfaceVariant,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ],
         ),
       ),
@@ -207,23 +241,32 @@ class _StatusBadge extends StatelessWidget {
   }
 }
 
-class _AssignedBadge extends StatelessWidget {
-  final String assignedBy;
-  const _AssignedBadge({required this.assignedBy});
+class _AssigneeChip extends StatelessWidget {
+  final String assigneeName;
+  const _AssigneeChip({required this.assigneeName});
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final c = scheme.primary;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: c.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(20),
       ),
-      child: Text(
-        'Asignada · $assignedBy',
-        style: AppTextStyles.label.copyWith(color: c),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.assignment_ind_outlined, size: 14, color: c),
+          const SizedBox(width: 4),
+          Text(
+            'Para $assigneeName',
+            style: AppTextStyles.label.copyWith(color: c),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
       ),
     );
   }

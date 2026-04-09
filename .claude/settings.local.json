@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find /e/hiperApp/hipperapp -name \"*.dart\" -type f | xargs grep -l \"projectMap\\\\|projectsById\" | head -5)",
+      "Bash(flutter devices:*)",
+      "Bash(flutter run:*)",
+      "Bash(flutter logs:*)",
+      "Bash(adb -s R52WB0CWGBY logcat -d | grep -E \"\\(flutter|FLUTTER|dart|FATAL|Error|Exception|crash\\)\" | tail -60 2>&1)",
+      "Bash(cd E:/hiperApp/hipperapp && flutter analyze 2>&1 | tail -30)"
+    ]
+  }
+}

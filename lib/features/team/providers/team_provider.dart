@@ -13,6 +13,17 @@ final teamMembersProvider = FutureProvider<List<UserModel>>((ref) {
   return ref.read(teamRepositoryProvider).getTeamMembers();
 });
 
+/// Trabajadores (`GET /api/users/?role=trabajador`) para selectores de asignación.
+final workersListProvider = FutureProvider<List<UserModel>>((ref) {
+  return ref.read(teamRepositoryProvider).getWorkers();
+});
+
+/// Catálogo de áreas (id → nombre) para enriquecer proyectos en UI sin ciclos de providers.
+final areasCatalogProvider =
+    FutureProvider<List<Map<String, dynamic>>>((ref) {
+  return ref.read(teamRepositoryProvider).getAreas();
+});
+
 final areaMembersProvider =
     FutureProvider.family<List<UserModel>, String>((ref, areaId) {
   return ref.read(teamRepositoryProvider).getAreaMembers(areaId);

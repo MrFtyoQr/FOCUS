@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../providers/team_provider.dart';
+
+import '../../../core/utils/app_snackbar.dart';
+import '../../../core/utils/assign_candidates.dart';
+import '../../auth/providers/auth_provider.dart';
+import '../../dashboard/data/activity_repository.dart';
 import '../../dashboard/providers/dashboard_provider.dart';
+import '../providers/team_provider.dart';
 
 class AssignScreen extends ConsumerStatefulWidget {
   final String activityId;
@@ -17,7 +22,8 @@ class _AssignScreenState extends ConsumerState<AssignScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final membersAsync = ref.watch(teamMembersProvider);
+    final workersAsync = ref.watch(workersListProvider);
+    final me = ref.watch(currentUserProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -27,11 +33,29 @@ class _AssignScreenState extends ConsumerState<AssignScreen> {
           onPressed: () => context.go('/team'),
         ),
       ),
-      body: membersAsync.when(
+      body: workersAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (_, __) => const Center(
-            child: Text('No se pudieron cargar los miembros')),
-        data: (members) => Column(
+            child: Text('No se pudieron cargar los trabajadores')),
+        data: (workers) {
+          final members = workersForAssignmentPicker(
+            workersFromApi: workers,
+            currentUser: me,
+          );
+          if (members.isEmpty) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text(
+                  me?.isAdminArea == true
+                      ? 'No hay trabajadores en tu área para asignar'
+                      : 'No hay personas disponibles para asignar',
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            );
+          }
+          return Column(
           children: [
             Expanded(
               child: ListView.builder(
@@ -61,12 +85,20 @@ class _AssignScreenState extends ConsumerState<AssignScreen> {
                 onPressed: _selectedUserId == null
                     ? null
                     : () async {
-                        await ref
-                            .read(activityRepositoryProvider)
-                            .assignActivity(
+                        try {
+                          await ref
+                              .read(activityRepositoryProvider)
+                              .assignActivity(
                                 widget.activityId, _selectedUserId!);
-                        ref.invalidate(dashboardProvider);
-                        if (context.mounted) context.go('/');
+                          ref.invalidate(dashboardProvider);
+                          if (context.mounted) context.go('/');
+                        } catch (e) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              AppSnackBar.error(messageFromAssignApiError(e)),
+                            );
+                          }
+                        }
                       },
                 style: FilledButton.styleFrom(
                   minimumSize: const Size(double.infinity, 50),
@@ -77,7 +109,8 @@ class _AssignScreenState extends ConsumerState<AssignScreen> {
               ),
             ),
           ],
-        ),
+        );
+        },
       ),
     );
   }

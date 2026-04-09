@@ -8,6 +8,7 @@ import 'package:path/path.dart' as p;
 import '../../auth/providers/auth_provider.dart';
 import '../../capture/providers/capture_provider.dart';
 import '../../dashboard/providers/dashboard_provider.dart';
+import '../../team/providers/team_provider.dart';
 import '../providers/projects_provider.dart';
 import '../../../core/utils/activity_status_colors.dart';
 import '../../../core/utils/app_snackbar.dart';
@@ -342,8 +343,12 @@ class _ProjectDetailScreenState extends ConsumerState<ProjectDetailScreen> {
 
     final titulo = tituloCtrl.text.trim();
     final desc = descCtrl.text.trim();
-    tituloCtrl.dispose();
-    descCtrl.dispose();
+    // Evita liberar controladores mientras el árbol del diálogo
+    // aún está terminando su ciclo de desmontaje.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      tituloCtrl.dispose();
+      descCtrl.dispose();
+    });
 
     if (ok != true || titulo.isEmpty) return;
 
@@ -410,6 +415,9 @@ class _ProjectDetailScreenState extends ConsumerState<ProjectDetailScreen> {
     BuildContext context,
     ProjectModel proyecto,
     Map<String, dynamic> progress,
+    List<ActivityModel> actividades,
+    String? nombreAreaResuelto,
+    bool actividadesSoloDesdeListadoGlobal,
   ) {
     final scheme = Theme.of(context).colorScheme;
     final proyectoColor = PaletaPasteles.proyectoColorByMode(
@@ -417,8 +425,12 @@ class _ProjectDetailScreenState extends ConsumerState<ProjectDetailScreen> {
       Theme.of(context).brightness,
     );
     final tintHeader = proyectoColor.withValues(alpha: 0.1);
-    final total = (progress['total'] as num?)?.toInt() ?? 0;
-    final completed = (progress['completed'] as num?)?.toInt() ?? 0;
+    final totalApi = (progress['total'] as num?)?.toInt() ?? 0;
+    final completedApi = (progress['completed'] as num?)?.toInt() ?? 0;
+    final total = totalApi > 0 ? totalApi : actividades.length;
+    final completed = totalApi > 0
+        ? completedApi
+        : actividades.where((a) => a.status == ActivityStatus.completada).length;
     final avance = total > 0 ? completed / total : 0.0;
     final descBox = Theme.of(context).brightness == Brightness.light
         ? scheme.surfaceContainerLowest.withValues(alpha: 0.9)
@@ -461,12 +473,24 @@ class _ProjectDetailScreenState extends ConsumerState<ProjectDetailScreen> {
           if (proyecto.description.isNotEmpty) const SizedBox(height: 16),
           ListTile(
             contentPadding: EdgeInsets.zero,
+            leading: Icon(Icons.domain_outlined, color: scheme.primary),
+            title: const Text('Área'),
+            subtitle: Text(
+              nombreAreaResuelto?.isNotEmpty == true
+                  ? nombreAreaResuelto!
+                  : (proyecto.areaId != null && proyecto.areaId!.isNotEmpty
+                      ? 'Área asignada (sin nombre en API)'
+                      : 'Sin área vinculada'),
+            ),
+          ),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
             leading: Icon(Icons.manage_accounts_outlined, color: scheme.primary),
             title: const Text('Administrador de área'),
             subtitle: Text(
               proyecto.areaAdminName?.isNotEmpty == true
                   ? proyecto.areaAdminName!
-                  : 'Sin asignar',
+                  : 'Sin asignar (el API no envió area_admin_name)',
             ),
           ),
           ListTile(
@@ -483,7 +507,35 @@ class _ProjectDetailScreenState extends ConsumerState<ProjectDetailScreen> {
                 ),
           ),
           const SizedBox(height: 8),
-          if (total == 0)
+          if (actividadesSoloDesdeListadoGlobal && actividades.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Material(
+                color: scheme.primaryContainer.withValues(alpha: 0.35),
+                borderRadius: BorderRadius.circular(8),
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(Icons.info_outline, size: 20, color: scheme.primary),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'Las actividades se muestran desde el listado global '
+                          'porque GET /api/projects/{id}/activities/ devolvió vacío. '
+                          'Conviene alinear ambos en backend.',
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: scheme.onSurfaceVariant,
+                              ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          if (total == 0 && actividades.isEmpty)
             Text(
               'Aún no hay actividades registradas en este proyecto.',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
@@ -494,7 +546,7 @@ class _ProjectDetailScreenState extends ConsumerState<ProjectDetailScreen> {
             Align(
               alignment: Alignment.centerRight,
               child: Text(
-                '${(avance * 100).round()}%',
+                '$completed / $total completadas · ${(avance * 100).round()}%',
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
@@ -504,10 +556,53 @@ class _ProjectDetailScreenState extends ConsumerState<ProjectDetailScreen> {
             ClipRRect(
               borderRadius: BorderRadius.circular(4),
               child: LinearProgressIndicator(
-                value: avance,
+                value: avance > 0 ? avance : null,
                 minHeight: 10,
                 backgroundColor: scheme.surfaceContainerHighest,
                 valueColor: AlwaysStoppedAnimation<Color>(proyectoColor),
+              ),
+            ),
+          ],
+          if (actividades.isNotEmpty) ...[
+            const SizedBox(height: 20),
+            Text(
+              'Desglose por estado',
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final e in ActivityStatus.values)
+                  if (actividades.where((a) => a.status == e).isNotEmpty)
+                    Chip(
+                      label: Text(
+                        '${e.label}: '
+                        '${actividades.where((a) => a.status == e).length}',
+                      ),
+                      visualDensity: VisualDensity.compact,
+                    ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Actividades',
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+            ),
+            const SizedBox(height: 8),
+            ...actividades.map(
+              (a) => Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: ActivityCard(
+                  activity: a,
+                  projectColorHex: proyecto.color,
+                  onTap: () => context.go('/activity/${a.id}'),
+                ),
               ),
             ),
           ],
@@ -809,6 +904,29 @@ class _ProjectDetailScreenState extends ConsumerState<ProjectDetailScreen> {
           currentUserProvider.select((u) => u?.isSuperAdmin ?? false),
         );
 
+        final nestedActs =
+            ref.watch(projectActivitiesProvider(widget.id)).valueOrNull ?? [];
+        final globalActs =
+            ref.watch(allActivitiesProvider).valueOrNull ?? [];
+        final actividadesProyecto = nestedActs.isNotEmpty
+            ? nestedActs
+            : globalActs
+                .where((a) => a.projectId == proyecto.id)
+                .toList();
+        final soloGlobal = nestedActs.isEmpty && actividadesProyecto.isNotEmpty;
+
+        final areasRaw = ref.watch(areasCatalogProvider).valueOrNull ?? [];
+        final areaIdToName = <String, String>{
+          for (final a in areasRaw)
+            if (a['id'] is String && a['name'] is String)
+              a['id'] as String: a['name'] as String,
+        };
+        final nombreArea = proyecto.areaName?.trim().isNotEmpty == true
+            ? proyecto.areaName!.trim()
+            : (proyecto.areaId != null
+                ? areaIdToName[proyecto.areaId!]
+                : null);
+
         return Scaffold(
           appBar: AppBar(
             title: Text(proyecto.name),
@@ -832,6 +950,9 @@ class _ProjectDetailScreenState extends ConsumerState<ProjectDetailScreen> {
                           context,
                           proyecto,
                           prog,
+                          actividadesProyecto,
+                          nombreArea,
+                          soloGlobal,
                         ),
                   )
               : activitiesAsync.when(

@@ -389,6 +389,9 @@ class _StartupAnimationScreenState extends ConsumerState<StartupAnimationScreen>
               final t = ease.transform(_focusCenterController.value);
               rowLeft = lerpDouble(pad, focusCenterLeft, t)!;
             }
+            // Evita padding negativo: con w=0 (primer frame) o pantalla muy
+            // estrecha, (w - anchoTexto)/2 < 0 y Flutter aserta en Padding.
+            rowLeft = rowLeft.clamp(0.0, double.infinity);
 
             return Stack(
               clipBehavior: Clip.none,

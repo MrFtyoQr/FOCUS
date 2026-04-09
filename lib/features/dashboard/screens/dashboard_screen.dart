@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../providers/dashboard_provider.dart';
 import '../../projects/providers/projects_provider.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../team/providers/team_provider.dart';
 import '../../../shared/enums/activity_status.dart';
 import '../../../shared/enums/user_role.dart';
 import '../../../core/utils/activity_scope.dart';
@@ -313,10 +314,35 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     BuildContext context,
     List<ActivityModel> list,
     Map<String, String> colorPorProyecto,
+    List<ProjectModel> proyectos,
   ) {
     final scheme = Theme.of(context).colorScheme;
+    final members = ref.watch(teamMembersProvider).valueOrNull ?? [];
+    final me = ref.watch(currentUserProvider);
+    final userNames = <String, String>{
+      for (final u in members)
+        u.id: u.fullName.trim().isNotEmpty ? u.fullName.trim() : u.email,
+      if (me != null)
+        me.id: me.fullName.trim().isNotEmpty ? me.fullName.trim() : me.email,
+    };
+    final projectById = {for (final p in proyectos) p.id: p};
+    final enriched = list
+        .map(
+          (a) => a.copyWith(
+            projectName: a.projectName ?? projectById[a.projectId]?.name,
+            assignedToName: a.assignedToName ??
+                (a.assignedToId != null
+                    ? userNames[a.assignedToId!]
+                    : null),
+            assignedByName: a.assignedByName ??
+                (a.assignedById != null
+                    ? userNames[a.assignedById!]
+                    : null),
+          ),
+        )
+        .toList();
 
-    if (list.isEmpty) {
+    if (enriched.isEmpty) {
       return Center(
         key: ValueKey('empty_${_selected.name}'),
         child: Padding(
@@ -370,24 +396,24 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       onRefresh: _refrescar,
       child: isTablet
           ? GridView.builder(
-              key: ValueKey('grid_${_selected.name}_${list.length}'),
+              key: ValueKey('grid_${_selected.name}_${enriched.length}'),
               physics: const AlwaysScrollableScrollPhysics(),
               padding: EdgeInsets.all(pad),
               gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: columnCount,
                 crossAxisSpacing: 16,
                 mainAxisSpacing: 16,
-                childAspectRatio: 1.2,
+                childAspectRatio: 0.92,
               ),
-              itemCount: list.length,
-              itemBuilder: (_, i) => tarjeta(list[i]),
+              itemCount: enriched.length,
+              itemBuilder: (_, i) => tarjeta(enriched[i]),
             )
           : ListView.builder(
-              key: ValueKey('list_${_selected.name}_${list.length}'),
+              key: ValueKey('list_${_selected.name}_${enriched.length}'),
               physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              itemCount: list.length,
-              itemBuilder: (_, i) => tarjeta(list[i]),
+              itemCount: enriched.length,
+              itemBuilder: (_, i) => tarjeta(enriched[i]),
             ),
     );
   }
@@ -487,6 +513,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     context,
                     list,
                     colorPorProyecto,
+                    proyectos,
                   );
                 },
               ),

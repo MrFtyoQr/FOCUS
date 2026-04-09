@@ -31,6 +31,14 @@ bool isTeamActivityForUser(
   ActivityModel a,
   Map<String, ProjectModel> projectsById,
 ) {
+  // No mezclar con personales: una tarea propia (sin proyecto / proyecto
+  // personal) no debe duplicarse en métricas de equipo por tener
+  // `assignedToId` igual al usuario.
+  if (isPersonalActivityForUser(user, a, projectsById)) return false;
+
+  // Asignada a mí por otra persona (equipo) aunque `area_id` venga incompleto.
+  if (a.assignedToId == user.id) return true;
+
   final aid = user.areaId;
   if (aid == null || aid.isEmpty) return false;
   if (!a.isSinProyecto) {
@@ -100,6 +108,7 @@ List<ActivityModel> filterActivitiesForDashboard({
       if (!passed) {
         debugPrint(
           '[FILTER] ✗ "${a.title}" | ownerId=${a.ownerId} '
+          'assignedToId=${a.assignedToId} '
           'isSinProyecto=${a.isSinProyecto} areaId=${a.areaId}',
         );
       }
@@ -129,6 +138,10 @@ List<ActivityModel> teamActivitiesForStats(
 ) {
   if (user.areaId == null || user.areaId!.isEmpty) return [];
   return all
-      .where((a) => isTeamActivityForUser(user, a, projectsById))
+      .where(
+        (a) =>
+            !isPersonalActivityForUser(user, a, projectsById) &&
+            isTeamActivityForUser(user, a, projectsById),
+      )
       .toList();
 }

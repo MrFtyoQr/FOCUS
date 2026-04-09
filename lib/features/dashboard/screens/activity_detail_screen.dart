@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart' as p;
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../auth/providers/auth_provider.dart';
 import '../../projects/providers/projects_provider.dart';
 import '../../team/providers/team_provider.dart';
 import '../providers/activity_detail_bundle_provider.dart';
@@ -14,8 +15,70 @@ import '../../../shared/enums/activity_status.dart';
 import '../../../shared/models/user.dart';
 import '../../../core/utils/activity_status_colors.dart';
 import '../../../core/utils/app_snackbar.dart';
+import '../../../core/utils/assign_candidates.dart';
 import '../../../core/utils/responsive.dart';
+import '../data/activity_repository.dart';
 import '../../../core/widgets/mover_actividad_bottom_sheet.dart';
+
+bool _looksLikeUuid(String s) => RegExp(
+      r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+      caseSensitive: false,
+    ).hasMatch(s.trim());
+
+String _logDetailEntry(
+  String key,
+  dynamic value,
+  Map<String, String> userNames,
+) {
+  final label = switch (key) {
+    'assigned_to' => 'Asignada a',
+    'assigned_to_id' => 'Asignada a',
+    'owner_id' => 'Propietario',
+    'owner' => 'Propietario',
+    'user' => 'Usuario',
+    'project' => 'Proyecto',
+    'project_id' => 'Proyecto',
+    'area' => 'Área',
+    'area_id' => 'Área',
+    'from' => 'Desde',
+    'to' => 'Hacia',
+    'status' => 'Estado',
+    'title' => 'Título',
+    _ => key,
+  };
+
+  String fmt(dynamic v) {
+    if (v == null) return '—';
+    if (v is Map) {
+      final n = v['full_name'] as String? ??
+          v['name'] as String? ??
+          v['email'] as String?;
+      if (n != null && n.trim().isNotEmpty) return n.trim();
+      final id = v['id'] as String?;
+      if (id != null) return userNames[id] ?? id;
+      return v.toString();
+    }
+    if (v is String) {
+      final t = v.trim();
+      if (_looksLikeUuid(t)) return userNames[t] ?? t;
+      return t;
+    }
+    return v.toString();
+  }
+
+  return '$label: ${fmt(value)}';
+}
+
+String _formatActivityLogDetail(
+  Map<dynamic, dynamic> raw,
+  Map<String, String> userNames,
+) {
+  final entries = raw.entries.toList()
+    ..sort((a, b) => a.key.toString().compareTo(b.key.toString()));
+  return entries
+      .map((e) => _logDetailEntry(e.key.toString(), e.value, userNames))
+      .join(' · ');
+}
 
 class ActivityDetailScreen extends ConsumerStatefulWidget {
   final String id;
@@ -126,12 +189,21 @@ class _ActivityDetailScreenState extends ConsumerState<ActivityDetailScreen> {
   }
 
   Future<void> _mostrarAsignar(ActivityDetailBundle bundle) async {
-    final repo  = ref.read(activityRepositoryProvider);
-    final users = await ref.read(teamMembersProvider.future);
+    final repo = ref.read(activityRepositoryProvider);
+    final workers = await ref.read(workersListProvider.future);
+    final me = ref.read(currentUserProvider);
     if (!mounted) return;
-    if (users.isEmpty) {
+    final candidates = workersForAssignmentPicker(
+      workersFromApi: workers,
+      currentUser: me,
+    );
+    if (candidates.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        AppSnackBar.aviso('No hay personas en el equipo'),
+        AppSnackBar.aviso(
+          me?.isAdminArea == true
+              ? 'No hay trabajadores en tu área para asignar'
+              : 'No hay personas disponibles para asignar',
+        ),
       );
       return;
     }
@@ -143,9 +215,9 @@ class _ActivityDetailScreenState extends ConsumerState<ActivityDetailScreen> {
           width: double.maxFinite,
           child: ListView.builder(
             shrinkWrap: true,
-            itemCount: users.length,
+            itemCount: candidates.length,
             itemBuilder: (_, i) {
-              final u = users[i];
+              final u = candidates[i];
               final initial =
                   u.firstName.isNotEmpty ? u.firstName[0].toUpperCase() : '?';
               return ListTile(
@@ -169,7 +241,9 @@ class _ActivityDetailScreenState extends ConsumerState<ActivityDetailScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(AppSnackBar.error('$e'));
+        ScaffoldMessenger.of(context).showSnackBar(
+          AppSnackBar.error(messageFromAssignApiError(e)),
+        );
       }
     }
   }
@@ -186,61 +260,9 @@ class _ActivityDetailScreenState extends ConsumerState<ActivityDetailScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(AppSnackBar.error('$e'));
-      }
-    }
-  }
-
-  Future<void> _notaRapida(ActivityDetailBundle bundle) async {
-    final ctrl = TextEditingController();
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Agregar nota'),
-        content: TextField(
-          controller: ctrl,
-          decoration: const InputDecoration(hintText: 'Escribe una nota…'),
-          maxLines: 5,
-          autofocus: true,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancelar'),
-          ),
-          FilledButton(
-            onPressed: () {
-              if (ctrl.text.trim().isNotEmpty) Navigator.pop(ctx, true);
-            },
-            child: const Text('Guardar'),
-          ),
-        ],
-      ),
-    );
-    if (ok != true || ctrl.text.trim().isEmpty) {
-      ctrl.dispose();
-      return;
-    }
-    final repo = ref.read(activityRepositoryProvider);
-    final a    = bundle.activity;
-    final bloque =
-        '\n\n[Nota ${DateTime.now().toIso8601String().substring(0, 16)}] '
-        '${ctrl.text.trim()}';
-    ctrl.dispose();
-    try {
-      await repo.updateActivity(a.id, {
-        'description': a.description.isEmpty
-            ? bloque.trim()
-            : '${a.description}$bloque',
-      });
-      _invalidate();
-      if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(AppSnackBar.exito('Nota agregada'));
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(AppSnackBar.error('$e'));
+        ScaffoldMessenger.of(context).showSnackBar(
+          AppSnackBar.error(messageFromAssignApiError(e)),
+        );
       }
     }
   }
@@ -533,6 +555,14 @@ class _ActivityDetailScreenState extends ConsumerState<ActivityDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final async = ref.watch(activityDetailBundleProvider(widget.id));
+    final members = ref.watch(teamMembersProvider).valueOrNull ?? [];
+    final me = ref.watch(currentUserProvider);
+    final logUserNames = <String, String>{
+      for (final u in members)
+        u.id: u.fullName.trim().isNotEmpty ? u.fullName.trim() : u.email,
+      if (me != null)
+        me.id: me.fullName.trim().isNotEmpty ? me.fullName.trim() : me.email,
+    };
 
     return Scaffold(
       appBar: AppBar(
@@ -554,8 +584,6 @@ class _ActivityDetailScreenState extends ConsumerState<ActivityDetailScreen> {
                     _mover(bundle);
                   case 'complete':
                     _completar(bundle);
-                  case 'note':
-                    _notaRapida(bundle);
                   case 'attach':
                     _agregarArchivoDialog(bundle);
                   case 'assign':
@@ -592,14 +620,6 @@ class _ActivityDetailScreenState extends ConsumerState<ActivityDetailScreen> {
                   ),
                   const PopupMenuDivider(),
                 ],
-                const PopupMenuItem(
-                  value: 'note',
-                  child: ListTile(
-                    dense: true,
-                    leading: Icon(Icons.note_add_outlined),
-                    title: Text('Agregar nota'),
-                  ),
-                ),
                 const PopupMenuItem(
                   value: 'attach',
                   child: ListTile(
@@ -654,13 +674,29 @@ class _ActivityDetailScreenState extends ConsumerState<ActivityDetailScreen> {
             ),
           ),
         ),
-        data: (bundle) => _buildContent(bundle),
+        data: (bundle) => _buildContent(bundle, logUserNames),
       ),
     );
   }
 
-  Widget _buildContent(ActivityDetailBundle bundle) {
-    final a       = bundle.activity;
+  Widget _buildContent(
+    ActivityDetailBundle bundle,
+    Map<String, String> logUserNames,
+  ) {
+    final a = bundle.activity;
+    final names = Map<String, String>.from(logUserNames);
+    if (a.ownerId.isNotEmpty && a.ownerName.trim().isNotEmpty) {
+      names[a.ownerId] = a.ownerName.trim();
+    }
+    if (a.assignedToId != null &&
+        (a.assignedToName ?? '').trim().isNotEmpty) {
+      names[a.assignedToId!] = a.assignedToName!.trim();
+    }
+    if (a.assignedById != null &&
+        (a.assignedByName ?? '').trim().isNotEmpty) {
+      names[a.assignedById!] = a.assignedByName!.trim();
+    }
+
     final theme   = Theme.of(context);
     final scheme  = theme.colorScheme;
     final muted   = scheme.onSurfaceVariant;
@@ -816,9 +852,10 @@ class _ActivityDetailScreenState extends ConsumerState<ActivityDetailScreen> {
               if (rawDetail == null) {
                 desc = '';
               } else if (rawDetail is Map) {
-                desc = rawDetail.entries
-                    .map((e) => '${e.key}: ${e.value}')
-                    .join(' · ');
+                desc = _formatActivityLogDetail(
+                  Map<dynamic, dynamic>.from(rawDetail),
+                  names,
+                );
               } else {
                 desc = rawDetail.toString();
               }

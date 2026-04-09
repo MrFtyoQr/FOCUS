@@ -70,7 +70,7 @@ Archivos: [`lib/features/dashboard/providers/dashboard_provider.dart`](../lib/fe
 | Rol | Comportamiento |
 |-----|----------------|
 | **SA** | Sección de **actividades personales** (mismo criterio que tablero). **Sin** resumen global ni bloque duplicado “por área”. **Rendimiento por equipos**: lista de AA con % y detalle al tocar (`_AreaDetailSheet`). Lista ordenada por mejor avance medio en proyectos del área en el provider de equipo SA. |
-| **AA** | **Personales** + **equipo** (métricas con `personalActivitiesForStats` / `teamActivitiesForStats`). **Rendimiento por equipos**: filas por trabajador vía `workerStatsProvider` (datos mock/API agregados, no recalculados solo con actividades filtradas por proyecto SA→AA). |
+| **AA** | **Personales** + **equipo** (métricas con `personalActivitiesForStats` / `teamActivitiesForStats`). **Rendimiento por equipos**: filas por trabajador vía `workerStatsProvider` (respuesta del endpoint de stats / API agregada, no recalculada solo con actividades filtradas por proyecto SA→AA). |
 | **TA** | **Personales** + **equipo** (dos bloques). Sin lista de “subordinados”. |
 | **Cuenta `personal`** | Misma pantalla que TA pero **solo personales** (sin bloque equipo, sin botón de notificaciones de ejemplo org). |
 
@@ -100,7 +100,7 @@ Crear proyecto:
 | Rol | Comportamiento |
 |-----|----------------|
 | **SA** | Diálogo: **Personal** (sin `areaId`) o **Para administrador de área** (dropdown de áreas desde `allAreasStatsProvider`). |
-| **AA / TA / personal** | Solo creación **sin área** (proyecto personal); el mock asigna `createdById` al usuario de sesión. |
+| **AA / TA / personal** | Solo creación **sin área** (proyecto personal); el backend debe persistir `created_by` según el usuario autenticado. |
 
 Archivo: [`lib/features/projects/screens/projects_screen.dart`](../lib/features/projects/screens/projects_screen.dart).  
 Helper reutilizable (parcialmente duplicado en pantalla): [`lib/core/utils/projects_access.dart`](../lib/core/utils/projects_access.dart) (`projectsMainListForUser` existe pero la pantalla usa su propia `_projectsForTab` con la misma intención).
@@ -127,7 +127,7 @@ Archivo: [`lib/features/capture/screens/capture_screen.dart`](../lib/features/ca
 | Rol | Comportamiento |
 |-----|----------------|
 | **SA** | Tarjetas expandibles por AA: proyectos del área, TA, avance por proyecto. Lista **ordenada** por mejor promedio de avance en proyectos. Texto introductorio de comparativa. |
-| **AA** | Lista de **solo TA** del mismo `areaId` (excluye al AA). Botón **invitar TA** (`generateInvite` mock). Tarjetas con métricas/actividades por asignación (`teamScreenDataProvider`). |
+| **AA** | Lista de **solo TA** del mismo `areaId` (excluye al AA). Botón **invitar TA** (`POST /api/users/invite/`). Tarjetas con métricas/actividades por asignación (`teamScreenDataProvider`). |
 | **TA** | Solo **líder AA** y **compañeros TA** del área (excluye a sí mismo). Sin botón de alta. |
 | **Cuenta `personal`** | Pantalla CTA: unirse / demo de invitación / info SA (sin listado de equipo). |
 
@@ -158,20 +158,16 @@ Archivos: [`lib/features/team/screens/team_screen.dart`](../lib/features/team/sc
 
 ## 5. Repositorios y parámetros reservados
 
-- **Actividades:** [`ActivityRepository.getActivities`](../lib/features/dashboard/data/activity_repository.dart) acepta `scope` opcional; se envía como query `scope` si no es null. **El mock no filtra por `scope` todavía**; el cliente filtra en memoria vía `activity_scope.dart`.
+- **Actividades:** [`ActivityRepository.getActivities`](../lib/features/dashboard/data/activity_repository.dart) acepta `scope` opcional; se envía como query `scope` si no es null. Hasta que el backend aplique el mismo criterio de forma fiable, el cliente puede seguir filtrando en memoria vía `activity_scope.dart`.
 - **Proyectos:** sin filtro por rol en el repositorio; la lista completa se filtra en UI.
 
 **Próximo paso backend:** implementar en servidor los mismos criterios (o devolver solo lo visible) y, cuando sea estable, **reducir o eliminar** el filtrado en cliente para evitar doble fuente de verdad.
 
 ---
 
-## 6. Cómo probar roles con mocks
+## 6. Cómo probar roles
 
-- Variable de entorno **`MOCK_ACT_AS`** en `app.env`: valores como `sa`, `aa`, `ta`, `personal` / `solo` / `usuario` (ver [`lib/core/mock/mock_repositories.dart`](../lib/core/mock/mock_repositories.dart)).
-- **Email en login mock:** por ejemplo `superadmin@…`, `personal@…` fuerzan usuario según reglas del mock.
-- Usuario de sesión efectivo para crear entidades: **`MockAuthRepository.effectiveSessionUser`**.
-
-Datos de ejemplo: [`lib/core/mock/mock_data.dart`](../lib/core/mock/mock_data.dart) (proyectos personales del SA, del AA, de TA Ana, cuenta Mia, actividades asociadas).
+Usar **cuentas reales** contra el entorno desplegado (`API_BASE_URL` en `app.env`). Referencia de usuarios de prueba: [`docs/BACKEND_PENDIENTES.md`](BACKEND_PENDIENTES.md) (sección de credenciales si aplica).
 
 ---
 
@@ -189,7 +185,7 @@ Datos de ejemplo: [`lib/core/mock/mock_data.dart`](../lib/core/mock/mock_data.da
 
 ## 8. Brechas conocidas respecto al documento de producto
 
-- **Rendimiento por equipos (AA):** las filas de TA pueden seguir viniendo de **stats agregados mock** y no solo de actividades filtradas “proyectos asignados por SA”.
+- **Rendimiento por equipos (AA):** las filas de TA dependen de lo que devuelva el **endpoint de stats** y puede no coincidir aún con actividades filtradas “proyectos asignados por SA”.
 - **TA en tablero “Equipo”:** solo entran actividades que cumplen `isTeamActivityForUser`; casos límite (p. ej. solo asignadas sin `area` coherente) pueden requerir ajuste de reglas o campos API.
 - **`projectsMainListForUser`:** helper definido pero la pantalla de proyectos implementa `_projectsForTab`; si se unifica, evitar divergencias futuras.
 - **Seguridad:** todo el filtrado en cliente es **UX**; el backend debe **autorizar** cada recurso.
@@ -212,7 +208,6 @@ Datos de ejemplo: [`lib/core/mock/mock_data.dart`](../lib/core/mock/mock_data.da
 | Proyectos | `lib/features/projects/screens/projects_screen.dart` |
 | Captura | `lib/features/capture/screens/capture_screen.dart` |
 | Equipo | `lib/features/team/screens/team_screen.dart`, `.../team_provider.dart` |
-| Mocks sesión | `lib/core/mock/mock_repositories.dart`, `lib/core/mock/mock_data.dart` |
 
 ---
 

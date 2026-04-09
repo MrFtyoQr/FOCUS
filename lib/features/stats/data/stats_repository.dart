@@ -43,7 +43,11 @@ class StatsRepository {
       ApiEndpoints.statsDrilldown,
       params: {'by': 'user'},
     );
-    final list = (response.data['by_user'] as List?) ?? [];
+    final data = response.data as Map<String, dynamic>;
+    final list = (data['by_user'] as List?) ??
+        (data['results'] as List?) ??
+        (data['users'] as List?) ??
+        [];
     return list.map((e) => e as Map<String, dynamic>).toList();
   }
 

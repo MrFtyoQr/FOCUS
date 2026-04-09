@@ -99,6 +99,97 @@ Color _productividadRateColor(BuildContext context, double rate) {
   );
 }
 
+int _statsReadInt(dynamic v) {
+  if (v == null) return 0;
+  if (v is int) return v;
+  if (v is num) return v.round();
+  if (v is String) {
+    final t = v.trim();
+    if (t.isEmpty) return 0;
+    return int.tryParse(t) ?? 0;
+  }
+  return 0;
+}
+
+/// Porcentaje 0–100: si hay total/completadas, se deriva de ellos (coherente con la UI).
+/// Si no, interpreta `completion_rate` como % o como fracción 0–1.
+double _statsCompletionPercent(Map<String, dynamic> m) {
+  final total = _statsReadInt(
+    m['total'] ?? m['total_count'] ?? m['activities_total'] ?? m['count'],
+  );
+  final completed = _statsReadInt(
+    m['completed'] ??
+        m['completed_count'] ??
+        m['done'] ??
+        m['completadas'],
+  );
+  if (total > 0) {
+    return (completed / total) * 100.0;
+  }
+  final raw = m['completion_rate'] ??
+      m['completion_percent'] ??
+      m['rate'] ??
+      m['progress'];
+  final n = switch (raw) {
+    null => null,
+    num x => x.toDouble(),
+    String s => double.tryParse(s),
+    _ => null,
+  };
+  if (n == null) return 0.0;
+  if (n < 0) return 0.0;
+  if (n <= 1.0) return n * 100.0;
+  return n.clamp(0.0, 100.0);
+}
+
+int _statsOverdue(Map<String, dynamic> m) {
+  return _statsReadInt(
+    m['overdue'] ??
+        m['overdue_count'] ??
+        m['vencidas'] ??
+        m['past_due'] ??
+        m['late'],
+  );
+}
+
+int _statsTotal(Map<String, dynamic> m) {
+  return _statsReadInt(
+    m['total'] ?? m['total_count'] ?? m['activities_total'] ?? m['count'],
+  );
+}
+
+int _statsCompleted(Map<String, dynamic> m) {
+  return _statsReadInt(
+    m['completed'] ??
+        m['completed_count'] ??
+        m['done'] ??
+        m['completadas'],
+  );
+}
+
+int _statsMembers(Map<String, dynamic> m) {
+  return _statsReadInt(
+    m['members'] ?? m['member_count'] ?? m['users_count'] ?? m['miembros'],
+  );
+}
+
+String _statsWorkerName(Map<String, dynamic> w) {
+  final n = w['name'] ?? w['full_name'] ?? w['display_name'];
+  if (n != null) {
+    final s = n.toString().trim();
+    if (s.isNotEmpty) return s;
+  }
+  final u = w['user'];
+  if (u is Map) {
+    final fn = u['full_name'] ?? u['email'] ?? u['username'];
+    if (fn != null) {
+      final s = fn.toString().trim();
+      if (s.isNotEmpty) return s;
+    }
+  }
+  return '—';
+}
+
 int _countOverdueActivities(List<ActivityModel> list) {
   final now = DateTime.now();
   final today = DateTime(now.year, now.month, now.day);
@@ -111,30 +202,68 @@ int _countOverdueActivities(List<ActivityModel> list) {
   }).length;
 }
 
+DateTime _localDateOnly(DateTime d) {
+  final l = d.toLocal();
+  return DateTime(l.year, l.month, l.day);
+}
+
+/// Columna para la gráfica de distribución: las completadas no quedan solo en
+/// "Completada" (eso vaciaba Hoy/Mañana). Se reubican por [targetDate] o, si no
+/// hay, por el día local en que se completó (hoy → Hoy; otro día → Bandeja).
+ActivityStatus _distribucionBucketProductividad(ActivityModel a, DateTime ahora) {
+  if (!a.isCompleted) return a.status;
+
+  final today = _localDateOnly(ahora);
+  final tomorrow = today.add(const Duration(days: 1));
+  final target = a.targetDate;
+
+  if (target != null) {
+    final td = _localDateOnly(target);
+    if (td == today) return ActivityStatus.hoy;
+    if (td == tomorrow) return ActivityStatus.manana;
+    if (td.isAfter(tomorrow)) return ActivityStatus.programado;
+    if (td.isBefore(today)) return ActivityStatus.pendientes;
+    return ActivityStatus.hoy;
+  }
+
+  final done = a.completedAt ?? a.updatedAt;
+  if (_localDateOnly(done) == today) return ActivityStatus.hoy;
+  return ActivityStatus.bandeja;
+}
+
 Map<String, dynamic> _computeProductividadMetricas(
   List<ActivityModel> todasActividades,
 ) {
     final ahora = DateTime.now();
-    final inicioDia = DateTime(ahora.year, ahora.month, ahora.day);
+    final inicioDia = _localDateOnly(ahora);
     final inicioSemana =
         inicioDia.subtract(Duration(days: ahora.weekday - 1));
 
     final completadasHoy = todasActividades.where((a) {
       if (a.status != ActivityStatus.completada) return false;
       final t = a.completedAt ?? a.updatedAt;
-      return !t.isBefore(inicioDia);
+      return _localDateOnly(t) == inicioDia;
     }).length;
 
     final completadasSemana = todasActividades.where((a) {
       if (a.status != ActivityStatus.completada) return false;
       final t = a.completedAt ?? a.updatedAt;
-      return !t.isBefore(inicioSemana);
+      final ld = _localDateOnly(t);
+      return !ld.isBefore(inicioSemana);
     }).length;
 
-    final porEstado = <ActivityStatus, int>{};
-    for (final estado in ActivityStatus.values) {
-      porEstado[estado] =
-          todasActividades.where((a) => a.status == estado).length;
+    final completadasTotal =
+        todasActividades.where((a) => a.isCompleted).length;
+    final pendientesActivos = todasActividades
+        .where((a) => a.status == ActivityStatus.pendientes)
+        .length;
+
+    final porEstado = <ActivityStatus, int>{
+      for (final s in ActivityStatus.values) s: 0,
+    };
+    for (final a in todasActividades) {
+      final b = _distribucionBucketProductividad(a, ahora);
+      porEstado[b] = (porEstado[b] ?? 0) + 1;
     }
 
     final deadlineProximo = ahora.add(const Duration(days: 3));
@@ -164,6 +293,8 @@ Map<String, dynamic> _computeProductividadMetricas(
     return {
       'completadasHoy': completadasHoy,
       'completadasSemana': completadasSemana,
+      'completadasTotal': completadasTotal,
+      'pendientesActivos': pendientesActivos,
       'porEstado': porEstado,
       'porcentajesDistribucion': porcentajesDistribucion,
       'deadlinesProximos': deadlinesProximos,
@@ -455,14 +586,16 @@ class _ProductividadMetricsColumn extends StatelessWidget {
                       ),
                 ),
                 const SizedBox(height: 16),
-                ...ActivityStatus.values.map(
-                  (e) => _buildEstadoBar(
-                    context,
-                    porcentajes,
-                    e,
-                    porEstado[e] ?? 0,
-                  ),
-                ),
+                ...ActivityStatus.values
+                    .where((e) => e != ActivityStatus.completada)
+                    .map(
+                      (e) => _buildEstadoBar(
+                        context,
+                        porcentajes,
+                        e,
+                        porEstado[e] ?? 0,
+                      ),
+                    ),
               ],
             ),
           ),
@@ -666,8 +799,8 @@ class _PersonalProductividadSection extends StatelessWidget {
     final bloqueadas = m['bloqueadas'] as int? ?? 0;
 
     final total = activities.length;
-    final completadas = porEstado[ActivityStatus.completada] ?? 0;
-    final pendientesCnt = porEstado[ActivityStatus.pendientes] ?? 0;
+    final completadas = m['completadasTotal'] as int? ?? 0;
+    final pendientesCnt = m['pendientesActivos'] as int? ?? 0;
     final vencidas = _countOverdueActivities(activities);
     final tasa =
         total == 0 ? 0.0 : (completadas / total * 100).clamp(0.0, 100.0);
@@ -728,14 +861,16 @@ class _PersonalProductividadSection extends StatelessWidget {
                       ),
                 ),
                 const SizedBox(height: 16),
-                ...ActivityStatus.values.map(
-                  (e) => _buildEstadoBar(
-                    context,
-                    porcentajes,
-                    e,
-                    porEstado[e] ?? 0,
-                  ),
-                ),
+                ...ActivityStatus.values
+                    .where((e) => e != ActivityStatus.completada)
+                    .map(
+                      (e) => _buildEstadoBar(
+                        context,
+                        porcentajes,
+                        e,
+                        porEstado[e] ?? 0,
+                      ),
+                    ),
               ],
             ),
           ),
@@ -1111,32 +1246,29 @@ class _SuperAdminStats extends ConsumerWidget {
               children: [
                 Consumer(
                   builder: (ctx, ref, _) {
-                    final act = ref.watch(allActivitiesProvider);
+                    final act  = ref.watch(allActivitiesProvider);
                     final proj = ref.watch(projectsProvider);
-                    final me = ref.watch(currentUserProvider);
+                    final me   = ref.watch(currentUserProvider);
+
                     return act.when(
                       loading: () => const Padding(
                         padding: EdgeInsets.symmetric(vertical: 20),
                         child: Center(child: CircularProgressIndicator()),
                       ),
                       error: (_, __) => const SizedBox.shrink(),
-                      data: (todas) => proj.when(
-                        loading: () => const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 20),
-                          child: Center(child: CircularProgressIndicator()),
-                        ),
-                        error: (_, __) => const SizedBox.shrink(),
-                        data: (projects) {
-                          if (me == null) return const SizedBox.shrink();
-                          return _PersonalProductividadSection(
-                            activities: personalActivitiesForStats(
-                              me,
-                              todas,
-                              projectMap(projects),
-                            ),
-                          );
-                        },
-                      ),
+                      data: (todas) {
+                        if (me == null) return const SizedBox.shrink();
+                        // Usa proyectos si ya están disponibles; si aún cargan
+                        // o fallaron no bloqueamos la sección personal.
+                        final projects = proj.valueOrNull ?? [];
+                        return _PersonalProductividadSection(
+                          activities: personalActivitiesForStats(
+                            me,
+                            todas,
+                            projectMap(projects),
+                          ),
+                        );
+                      },
                     );
                   },
                 ),
@@ -1154,7 +1286,7 @@ class _SuperAdminStats extends ConsumerWidget {
                 const SizedBox(height: 12),
                 ...areas.map(
                   (a) {
-                    final rate = (a['completion_rate'] as num?)?.toDouble() ?? 0;
+                    final rate = _statsCompletionPercent(a);
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 8),
                       child: ListTile(
@@ -1380,7 +1512,7 @@ class _WorkerBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final rate  = (worker['completion_rate'] as num).toDouble();
+    final rate = _statsCompletionPercent(worker);
     final color = _productividadRateColor(context, rate);
     final b = scheme.brightness;
 
@@ -1398,7 +1530,7 @@ class _WorkerBar extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(worker['name'] as String,
+              Text(_statsWorkerName(worker),
                   style: AppTextStyles.body.copyWith(
                       fontWeight: FontWeight.w600,
                       color: scheme.onSurface)),
@@ -1413,7 +1545,7 @@ class _WorkerBar extends StatelessWidget {
           ClipRRect(
             borderRadius: BorderRadius.circular(4),
             child: LinearProgressIndicator(
-              value: rate / 100,
+              value: (rate / 100).clamp(0.0, 1.0),
               minHeight: 8,
               backgroundColor: scheme.surfaceContainerHighest,
               valueColor: AlwaysStoppedAnimation<Color>(color),
@@ -1424,12 +1556,12 @@ class _WorkerBar extends StatelessWidget {
             children: [
               _MiniStat(
                   label: 'Total',
-                  value: worker['total'],
+                  value: _statsTotal(worker),
                   color: scheme.primary),
               const SizedBox(width: 12),
               _MiniStat(
                   label: 'Completadas',
-                  value: worker['completed'],
+                  value: _statsCompleted(worker),
                   color: ActivityStatusColors.forStatus(
                     ActivityStatus.completada,
                     brightness: b,
@@ -1437,7 +1569,7 @@ class _WorkerBar extends StatelessWidget {
               const SizedBox(width: 12),
               _MiniStat(
                   label: 'Vencidas',
-                  value: worker['overdue'],
+                  value: _statsOverdue(worker),
                   color: PaletaPasteles.fechaUrgente(b),
                 ),
             ],
@@ -1481,7 +1613,8 @@ class _AreaDetailSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final rate = (area['completion_rate'] as num).toDouble();
+    final rate = _statsCompletionPercent(area);
+    final members = _statsMembers(area);
 
     return DraggableScrollableSheet(
       initialChildSize: 0.55,
@@ -1507,7 +1640,7 @@ class _AreaDetailSheet extends StatelessWidget {
               style: AppTextStyles.heading2
                   .copyWith(color: scheme.onSurface)),
           Text(
-            'Admin: ${area['admin_name']}  •  ${area['members']} miembros',
+            'Admin: ${area['admin_name']}  •  $members miembros',
             style: AppTextStyles.bodySecondary
                 .copyWith(color: scheme.onSurfaceVariant),
           ),
@@ -1521,10 +1654,10 @@ class _AreaDetailSheet extends StatelessWidget {
           ),
           const SizedBox(height: 20),
           _KpiCardGrid(items: [
-            _KpiItem('Total', area['total'], scheme.primary),
+            _KpiItem('Total', _statsTotal(area), scheme.primary),
             _KpiItem(
               'Completadas',
-              area['completed'],
+              _statsCompleted(area),
               ActivityStatusColors.forStatus(
                 ActivityStatus.completada,
                 brightness: scheme.brightness,
@@ -1532,12 +1665,12 @@ class _AreaDetailSheet extends StatelessWidget {
             ),
             _KpiItem(
               'Vencidas',
-              area['overdue'],
+              _statsOverdue(area),
               PaletaPasteles.fechaUrgente(scheme.brightness),
             ),
             _KpiItem(
               'Miembros',
-              area['members'],
+              members,
               ActivityStatusColors.forStatus(
                 ActivityStatus.hoy,
                 brightness: scheme.brightness,

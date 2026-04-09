@@ -91,4 +91,32 @@ class ActivityModel {
     createdAt:  DateTime.tryParse(json['created_at'] as String? ?? '') ?? DateTime.now(),
     updatedAt:  DateTime.tryParse(json['updated_at'] as String? ?? '') ?? DateTime.now(),
   );
+
+  ActivityModel copyWith({
+    String? projectName,
+    String? assignedToName,
+    String? assignedByName,
+    String? areaName,
+  }) {
+    return ActivityModel(
+      id: id,
+      title: title,
+      description: description,
+      status: status,
+      ownerId: ownerId,
+      ownerName: ownerName,
+      assignedToId: assignedToId,
+      assignedToName: assignedToName ?? this.assignedToName,
+      assignedById: assignedById,
+      assignedByName: assignedByName ?? this.assignedByName,
+      projectId: projectId,
+      projectName: projectName ?? this.projectName,
+      areaId: areaId,
+      areaName: areaName ?? this.areaName,
+      targetDate: targetDate,
+      completedAt: completedAt,
+      createdAt: createdAt,
+      updatedAt: updatedAt,
+    );
+  }
 }
