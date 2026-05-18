@@ -13,7 +13,7 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>hipperapp</string>
+	<string>HiperApp</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -45,8 +45,17 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
-	<!-- Permiso para usar Face ID / Touch ID (requerido por el sistema para mostrar el diálogo de desbloqueo) -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>NSFaceIDUsageDescription</key>
 	<string>HiperApp usa Face ID o Touch ID para desbloquear la app y proteger tu sesión.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>HiperApp necesita la cámara para adjuntar fotos a actividades.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>HiperApp necesita acceder a tus fotos para adjuntarlas a actividades.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>HiperApp puede guardar imágenes en tu biblioteca cuando lo solicites.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>HiperApp puede usar el micrófono al grabar vídeos como adjuntos.</string>
 </dict>
 </plist>

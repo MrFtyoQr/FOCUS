@@ -1,0 +1,4 @@
+// Identidad de la app en tiendas (incluido desde Flutter/Debug.xcconfig y Release.xcconfig)
+PRODUCT_BUNDLE_IDENTIFIER = com.treetech.hiperapp
+PRODUCT_NAME = HiperApp
+MARKETING_VERSION = $(FLUTTER_BUILD_NAME)

@@ -1,0 +1,7 @@
+# Copia este archivo a android/key.properties y completa los valores.
+# Genera el keystore con:  tool/release/generate_upload_keystore.ps1
+
+storePassword=TU_STORE_PASSWORD
+keyPassword=TU_KEY_PASSWORD
+keyAlias=upload
+storeFile=app/upload-keystore.jks
