@@ -6,11 +6,16 @@ class ProfileNotifier extends StateNotifier<AsyncValue<void>> {
   final AuthRepository _repo;
   final Ref _ref;
 
-  ProfileNotifier(this._repo, this._ref) : super(const AsyncValue.data(null));
+  ProfileNotifier(this._repo, this._ref)
+      : super(const AsyncValue.data(null));
 
-  Future<void> updateProfile({String? firstName, String? lastName}) async {
+  Future<void> updateProfile({
+    String? firstName,
+    String? lastName,
+  }) async {
     state = const AsyncValue.loading();
     try {
+      await _repo.getMe();
       _ref.invalidate(authProvider);
       state = const AsyncValue.data(null);
     } catch (e, st) {
@@ -19,6 +24,7 @@ class ProfileNotifier extends StateNotifier<AsyncValue<void>> {
   }
 }
 
-final profileProvider = StateNotifierProvider<ProfileNotifier, AsyncValue<void>>(
+final profileProvider =
+    StateNotifierProvider<ProfileNotifier, AsyncValue<void>>(
   (ref) => ProfileNotifier(ref.read(authRepositoryProvider), ref),
 );

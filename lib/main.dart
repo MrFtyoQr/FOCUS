@@ -1,54 +1,52 @@
 import 'package:flutter/material.dart';
-import 'package:timezone/data/latest_all.dart' as tz;
-import 'utils/app_theme.dart';
-import 'screens/main_navigation.dart';
-import 'services/database_service.dart';
-import 'services/notification_service.dart';
+import 'package:flutter_slidable/flutter_slidable.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'core/api/api_client.dart';
+import 'core/router/app_router.dart';
+import 'core/storage/local_prefs.dart';
+import 'core/theme/app_theme.dart';
+import 'core/theme/theme_mode_provider.dart';
 
-import 'dart:io';
-import 'package:flutter/material.dart';
-import 'package:sqflite/sqflite.dart';
-import 'package:sqflite_common_ffi/sqflite_ffi.dart';
-
-void main() async {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // 🔑 IMPORTANTE: Inicializar SQLite para Windows / Desktop
-  if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
-    sqfliteFfiInit();
-    databaseFactory = databaseFactoryFfi;
-  }
+  await dotenv.load(fileName: 'app.env');
+  ApiClient.instance.initialize();
 
-  // Inicializar timezone
-  tz.initializeTimeZones();
+  final initialThemeMode = await LocalPrefs.instance.getThemeMode();
 
-  // Inicializar base de datos
-  await DatabaseService().initialize();
-
-  // Inicializar y programar notificaciones
-  try {
-    final notificationService = NotificationService();
-    await notificationService.initialize();
-    await notificationService.programarNotificacionesDiarias();
-  } catch (e) {
-    print('Error al inicializar notificaciones: $e');
-  }
-
-  runApp(const HiperApp());
+  runApp(
+    ProviderScope(
+      overrides: [
+        themeModeProvider.overrideWith((ref) => initialThemeMode),
+      ],
+      child: const HiperApp(),
+    ),
+  );
 }
 
-class HiperApp extends StatelessWidget {
+class HiperApp extends ConsumerStatefulWidget {
   const HiperApp({super.key});
 
   @override
+  ConsumerState<HiperApp> createState() => _HiperAppState();
+}
+
+class _HiperAppState extends ConsumerState<HiperApp> {
+  @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'HiperApp',
-      theme: AppTheme.lightTheme,
-      darkTheme: AppTheme.darkTheme,
-      themeMode: ThemeMode.system,
-      home: const MainNavigation(),
-      debugShowCheckedModeBanner: false,
+    final router    = ref.watch(routerProvider);
+    final themeMode = ref.watch(themeModeProvider);
+    return SlidableAutoCloseBehavior(
+      child: MaterialApp.router(
+        title: 'HiperApp',
+        theme: AppTheme.light,
+        darkTheme: AppTheme.dark,
+        themeMode: themeMode,
+        routerConfig: router,
+        debugShowCheckedModeBanner: false,
+      ),
     );
   }
 }

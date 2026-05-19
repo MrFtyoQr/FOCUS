@@ -1,5 +1,5 @@
-import 'package:local_auth/local_auth.dart';
 import 'package:flutter/services.dart';
+import 'package:local_auth/local_auth.dart';
 import '../storage/secure_storage.dart';
 import '../storage/local_prefs.dart';
 
@@ -21,25 +21,44 @@ class BiometricService {
 
   Future<BiometricResult> authenticate() async {
     try {
-      if (!await isAvailable()) return BiometricResult.notAvailable;
-      final ok = await _auth.authenticate(
+      final available = await isAvailable();
+      if (!available) return BiometricResult.notAvailable;
+
+      final authenticated = await _auth.authenticate(
         localizedReason: 'Confirma tu identidad para acceder',
-        options: const AuthenticationOptions(biometricOnly: false, stickyAuth: true),
+        options: const AuthenticationOptions(
+          biometricOnly: false,
+          stickyAuth: true,
+        ),
       );
-      return ok ? BiometricResult.success : BiometricResult.failure;
+      return authenticated ? BiometricResult.success : BiometricResult.failure;
     } on PlatformException catch (e) {
-      if (e.code == 'LockedOut' || e.code == 'PermanentlyLockedOut') return BiometricResult.lockedOut;
+      if (e.code == 'LockedOut' || e.code == 'PermanentlyLockedOut') {
+        return BiometricResult.lockedOut;
+      }
       return BiometricResult.failure;
     }
   }
 
   Future<bool> validatePin(String inputPin) async {
-    final saved = await SecureStorage.instance.getPin();
-    return saved != null && saved == inputPin;
+    final savedPin = await SecureStorage.instance.getPin();
+    return savedPin != null && savedPin == inputPin;
   }
 
   Future<void> savePin(String pin) async {
     await SecureStorage.instance.savePin(pin);
     await LocalPrefs.instance.setBiometricEnabled(true);
+  }
+
+  Future<bool> unlock() async {
+    final biometricEnabled   = await LocalPrefs.instance.isBiometricEnabled();
+    final biometricAvailable = await isAvailable();
+
+    if (biometricAvailable && biometricEnabled) {
+      final result = await authenticate();
+      if (result == BiometricResult.success) return true;
+      if (result == BiometricResult.lockedOut) return false;
+    }
+    return false;
   }
 }

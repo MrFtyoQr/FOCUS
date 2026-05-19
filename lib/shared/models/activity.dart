@@ -1,19 +1,19 @@
 import '../enums/activity_status.dart';
 
 class ActivityModel {
-  final int            id;
+  final String         id;
   final String         title;
   final String         description;
   final ActivityStatus status;
-  final int            ownerId;
+  final String         ownerId;
   final String         ownerName;
-  final int?           assignedToId;
+  final String?        assignedToId;
   final String?        assignedToName;
-  final int?           assignedById;
+  final String?        assignedById;
   final String?        assignedByName;
-  final int?           projectId;
+  final String?        projectId;
   final String?        projectName;
-  final int?           areaId;
+  final String?        areaId;
   final String?        areaName;
   final DateTime?      targetDate;
   final DateTime?      completedAt;
@@ -44,24 +44,79 @@ class ActivityModel {
   bool get isAssigned  => assignedById != null;
   bool get isCompleted => status == ActivityStatus.completada;
 
+  /// Sin proyecto enlazado (independientes / fuera de proyectos).
+  bool get isSinProyecto =>
+      projectId == null || projectId!.isEmpty;
+
+  /// El backend puede devolver campos relacionales como UUID plano
+  /// o como objeto anidado `{"id": "...", "full_name": "..."}`.
+  /// Este helper extrae el id en ambos casos.
+  static String? _id(dynamic v) {
+    if (v == null) return null;
+    if (v is String) return v.isEmpty ? null : v;
+    if (v is Map)   return v['id'] as String?;
+    return null;
+  }
+
+  /// Extrae el nombre de un objeto anidado (`full_name`) o devuelve
+  /// el valor plano si ya es un String. Si no hay nada, usa [fallback].
+  static String? _name(dynamic nested, dynamic flat, {String? key = 'full_name'}) {
+    if (flat is String && flat.isNotEmpty) return flat;
+    if (nested is Map) return (nested[key] ?? nested['name']) as String?;
+    return null;
+  }
+
   factory ActivityModel.fromJson(Map<String, dynamic> json) => ActivityModel(
-    id:             json['id'] as int,
-    title:          json['title'] as String,
-    description:    json['description'] as String? ?? '',
-    status:         ActivityStatus.fromString(json['status'] as String),
-    ownerId:        json['owner'] as int,
-    ownerName:      json['owner_name'] as String,
-    assignedToId:   json['assigned_to'] as int?,
-    assignedToName: json['assigned_to_name'] as String?,
-    assignedById:   json['assigned_by'] as int?,
-    assignedByName: json['assigned_by_name'] as String?,
-    projectId:      json['project'] as int?,
-    projectName:    json['project_name'] as String?,
-    areaId:         json['area'] as int?,
-    areaName:       json['area_name'] as String?,
-    targetDate:     json['target_date'] != null ? DateTime.parse(json['target_date'] as String) : null,
-    completedAt:    json['completed_at'] != null ? DateTime.parse(json['completed_at'] as String) : null,
-    createdAt:      DateTime.parse(json['created_at'] as String),
-    updatedAt:      DateTime.parse(json['updated_at'] as String),
+    id:             json['id'] as String,
+    title:          (json['title'] ?? '') as String,
+    description:    (json['description'] ?? '') as String,
+    status:         ActivityStatus.fromString(
+                      (json['status'] ?? 'inbox') as String),
+    // El backend puede devolver el campo como objeto anidado {id, ...}
+    // o como campo plano "owner_id", "project_id", etc.
+    ownerId:        _id(json['owner'])       ?? (json['owner_id']       as String?) ?? '',
+    ownerName:      _name(json['owner'], json['owner_name'])             ?? '',
+    assignedToId:   _id(json['assigned_to']) ?? (json['assigned_to_id'] as String?),
+    assignedToName: _name(json['assigned_to'], json['assigned_to_name']),
+    assignedById:   _id(json['assigned_by']) ?? (json['assigned_by_id'] as String?),
+    assignedByName: _name(json['assigned_by'], json['assigned_by_name']),
+    projectId:      _id(json['project'])     ?? (json['project_id']     as String?),
+    projectName:    _name(json['project'], json['project_name'], key: 'name'),
+    areaId:         _id(json['area'])        ?? (json['area_id']        as String?),
+    areaName:       _name(json['area'], json['area_name'], key: 'name'),
+    targetDate:     json['target_date'] != null
+        ? DateTime.tryParse(json['target_date'] as String) : null,
+    completedAt:    json['completed_at'] != null
+        ? DateTime.tryParse(json['completed_at'] as String) : null,
+    createdAt:  DateTime.tryParse(json['created_at'] as String? ?? '') ?? DateTime.now(),
+    updatedAt:  DateTime.tryParse(json['updated_at'] as String? ?? '') ?? DateTime.now(),
   );
+
+  ActivityModel copyWith({
+    String? projectName,
+    String? assignedToName,
+    String? assignedByName,
+    String? areaName,
+  }) {
+    return ActivityModel(
+      id: id,
+      title: title,
+      description: description,
+      status: status,
+      ownerId: ownerId,
+      ownerName: ownerName,
+      assignedToId: assignedToId,
+      assignedToName: assignedToName ?? this.assignedToName,
+      assignedById: assignedById,
+      assignedByName: assignedByName ?? this.assignedByName,
+      projectId: projectId,
+      projectName: projectName ?? this.projectName,
+      areaId: areaId,
+      areaName: areaName ?? this.areaName,
+      targetDate: targetDate,
+      completedAt: completedAt,
+      createdAt: createdAt,
+      updatedAt: updatedAt,
+    );
+  }
 }

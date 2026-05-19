@@ -43,3 +43,16 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Entorno local
+.env
+store/config.env
+
+# Play Store / firma Android
+android/key.properties
+android/app/upload-keystore.jks
+
+# App Store (certificados locales)
+ios/ExportOptions.plist
+**/*.p8
+**/*.mobileprovision

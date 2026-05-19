@@ -13,7 +13,11 @@ class SecureStorage {
   static const _refreshTokenKey = 'refresh_token';
   static const _pinKey           = 'user_pin';
 
-  Future<void> saveTokens({required String access, required String refresh}) async {
+  // ── JWT ──
+  Future<void> saveTokens({
+    required String access,
+    required String refresh,
+  }) async {
     await _storage.write(key: _accessTokenKey,  value: access);
     await _storage.write(key: _refreshTokenKey, value: refresh);
   }
@@ -26,11 +30,18 @@ class SecureStorage {
     await _storage.delete(key: _refreshTokenKey);
   }
 
-  Future<void> savePin(String pin) async => _storage.write(key: _pinKey, value: pin);
-  Future<String?> getPin()           async => _storage.read(key: _pinKey);
-  Future<bool>    hasPin()           async => (await getPin()) != null;
-  Future<void>    clearPin()         async => _storage.delete(key: _pinKey);
+  // ── PIN ──
+  Future<void> savePin(String pin) async =>
+      _storage.write(key: _pinKey, value: pin);
 
+  Future<String?> getPin() async => _storage.read(key: _pinKey);
+
+  Future<bool> hasPin() async => (await getPin()) != null;
+
+  Future<void> clearPin() async => _storage.delete(key: _pinKey);
+
+  // ── Sesión ──
   Future<bool> hasSession() async => (await getAccessToken()) != null;
-  Future<void> clearAll()   async => _storage.deleteAll();
+
+  Future<void> clearAll() async => _storage.deleteAll();
 }

@@ -6,18 +6,31 @@ import '../../../core/theme/app_text_styles.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
+
   @override
   State<OnboardingScreen> createState() => _OnboardingScreenState();
 }
 
 class _OnboardingScreenState extends State<OnboardingScreen> {
-  int _page = 0;
+  final _pageController = PageController();
+  int _currentPage = 0;
 
   static const _pages = [
-    (icon: Icons.grid_view_rounded,    title: 'Tablero visual',      body: 'Organiza tus actividades en columnas: Bandeja, Hoy, Mañana, Programado y Pendientes.'),
-    (icon: Icons.add_circle_outline,   title: 'Captura rápida',      body: 'Agrega nuevas tareas en segundos. Asigna estado, fecha y proyecto sin perder el foco.'),
-    (icon: Icons.group_outlined,       title: 'Trabaja en equipo',   body: 'Comparte proyectos, asigna actividades y mide la productividad de tu área.'),
-    (icon: Icons.trending_up_rounded,  title: 'Métricas reales',     body: 'Revisa tu ritmo de trabajo y el de tu equipo con estadísticas actualizadas en tiempo real.'),
+    _OnboardingPage(
+      icon: Icons.grid_view_rounded,
+      title: 'Tu tablero de actividades',
+      body: 'Organiza tus tareas del día en columnas: Hoy, Mañana, Programado y Bandeja.',
+    ),
+    _OnboardingPage(
+      icon: Icons.add_circle_outline_rounded,
+      title: 'Captura al instante',
+      body: 'Crea actividades en segundos desde cualquier pantalla sin perder el hilo.',
+    ),
+    _OnboardingPage(
+      icon: Icons.trending_up_rounded,
+      title: 'Mide tu productividad',
+      body: 'Revisa tus estadísticas personales y de equipo para mejorar cada semana.',
+    ),
   ];
 
   Future<void> _finish() async {
@@ -27,45 +40,119 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final p = _pages[_page];
+    final isLast = _currentPage == _pages.length - 1;
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            children: [
-              const Spacer(),
-              Icon(p.icon, size: 80, color: AppColors.purple),
-              const SizedBox(height: 32),
-              Text(p.title,    style: AppTextStyles.heading1, textAlign: TextAlign.center),
-              const SizedBox(height: 12),
-              Text(p.body,     style: AppTextStyles.bodySecondary, textAlign: TextAlign.center),
-              const Spacer(),
-              Row(mainAxisAlignment: MainAxisAlignment.center, children: List.generate(_pages.length, (i) =>
-                Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 4),
-                  width: i == _page ? 20 : 8, height: 8,
-                  decoration: BoxDecoration(
-                    color: i == _page ? AppColors.purple : AppColors.surfaceBorder,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                ),
-              )),
-              const SizedBox(height: 32),
-              ElevatedButton(
-                onPressed: _page < _pages.length - 1
-                    ? () => setState(() => _page++)
-                    : _finish,
-                child: Text(_page < _pages.length - 1 ? 'Continuar' : 'Empezar'),
+        child: Column(
+          children: [
+            Expanded(
+              child: PageView.builder(
+                controller: _pageController,
+                itemCount: _pages.length,
+                onPageChanged: (i) => setState(() => _currentPage = i),
+                itemBuilder: (_, i) => _pages[i],
               ),
-              if (_page < _pages.length - 1) ...[
-                const SizedBox(height: 12),
-                TextButton(onPressed: _finish, child: const Text('Saltar', style: TextStyle(color: AppColors.textSecondary))),
-              ],
-            ],
-          ),
+            ),
+            Padding(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
+              child: Column(
+                children: [
+                  // Dots
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: List.generate(_pages.length, (i) {
+                      return AnimatedContainer(
+                        duration: const Duration(milliseconds: 250),
+                        margin: const EdgeInsets.symmetric(horizontal: 4),
+                        width:  _currentPage == i ? 24 : 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: _currentPage == i
+                              ? Theme.of(context).colorScheme.primary
+                              : AppColors.surfaceBorder,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      );
+                    }),
+                  ),
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: isLast
+                          ? _finish
+                          : () => _pageController.nextPage(
+                                duration: const Duration(milliseconds: 300),
+                                curve: Curves.easeInOut,
+                              ),
+                      child: Text(isLast ? 'Empezar' : 'Siguiente'),
+                    ),
+                  ),
+                  if (!isLast) ...[
+                    const SizedBox(height: 12),
+                    TextButton(
+                      onPressed: _finish,
+                      child: Text(
+                        'Omitir',
+                        style: AppTextStyles.bodySecondary,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
         ),
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+}
+
+class _OnboardingPage extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String body;
+
+  const _OnboardingPage({
+    required this.icon,
+    required this.title,
+    required this.body,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final primary = Theme.of(context).colorScheme.primary;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 32),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(28),
+            decoration: BoxDecoration(
+              color: primary.withValues(alpha: 0.15),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, size: 64, color: primary),
+          ),
+          const SizedBox(height: 32),
+          Text(title, style: AppTextStyles.heading1, textAlign: TextAlign.center),
+          const SizedBox(height: 12),
+          Text(
+            body,
+            style: AppTextStyles.body,
+            textAlign: TextAlign.center,
+          ),
+        ],
       ),
     );
   }

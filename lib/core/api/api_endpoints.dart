@@ -1,30 +1,49 @@
 class ApiEndpoints {
   ApiEndpoints._();
 
-  static const login        = '/auth/login/';
-  static const refresh      = '/auth/refresh/';
-  static const logout       = '/auth/logout/';
-  static const me           = '/auth/me/';
-  static const inviteSend   = '/auth/invitations/send/';
-  static const inviteAccept = '/auth/invitations/accept/';
-  static String inviteValidate(String token) => '/auth/invitations/$token/';
+  // Auth
+  static const login               = '/api/auth/login/';
+  static const logout              = '/api/auth/logout/';
+  static const refresh             = '/api/auth/refresh/';
+  static const me                  = '/api/auth/me/';
+  static const biometricEnable     = '/api/auth/biometric/enable/';
+  static const biometricDisable    = '/api/auth/biometric/disable/';
+  static const biometricLogin      = '/api/auth/biometric/login/';
+  static const onboardingComplete  = '/api/auth/onboarding/complete/';
 
-  static const users              = '/users/';
-  static String userDetail(int id) => '/users/$id/';
+  // Users
+  static const users         = '/api/users/';
+  static const inviteUser    = '/api/users/invite/';
+  static const verifyInvite  = '/api/users/invite/verify/';
+  static const acceptInvite  = '/api/users/accept-invite/';
+  static String userDetail(String id) => '/api/users/$id/';
 
-  static const areas              = '/areas/';
-  static String areaMembers(int id) => '/areas/$id/members/';
+  // Areas
+  static const areas                    = '/api/areas/';
+  static String areaDetail(String id)   => '/api/areas/$id/';
+  static String areaMembers(String id)  => '/api/areas/$id/members/';
 
-  static const activities            = '/activities/';
-  static String activityDetail(int id)  => '/activities/$id/';
-  static String activityMove(int id)    => '/activities/$id/move/';
-  static String activityComplete(int id)=> '/activities/$id/complete/';
-  static String activityAssign(int id)  => '/activities/$id/assign/';
+  // Activities
+  static const activities                                         = '/api/activities/';
+  static String activityDetail(String id)                        => '/api/activities/$id/';
+  static String activityMove(String id)                          => '/api/activities/$id/move/';
+  static String activityComplete(String id)                      => '/api/activities/$id/complete/';
+  static String activityAssign(String id)                        => '/api/activities/$id/assign/';
+  static String activityLogs(String id)                          => '/api/activities/$id/logs/';
+  static String attachments(String id)                           => '/api/activities/$id/attachments/';
+  static String attachmentDelete(String actId, String attId)     =>
+      '/api/activities/$actId/attachments/$attId/';
 
-  static const projects               = '/projects/';
-  static String projectDetail(int id)  => '/projects/$id/';
+  // Projects
+  static const projects                         = '/api/projects/';
+  static String projectDetail(String id)        => '/api/projects/$id/';
+  static String projectActivities(String id)    => '/api/projects/$id/activities/';
+  static String projectProgress(String id)      => '/api/projects/$id/progress/';
 
-  static const statsMe   = '/stats/me/';
-  static const statsArea = '/stats/area/';
-  static String statsAreaDetail(int id) => '/stats/area/$id/';
+  // Stats
+  static const statsPersonal  = '/api/stats/personal/';
+  static const statsGlobal    = '/api/stats/global/';
+  static const statsWorkers   = '/api/stats/workers/';
+  static const statsDrilldown = '/api/stats/drilldown/';
+  static String statsArea(String areaId) => '/api/stats/area/$areaId/';
 }
