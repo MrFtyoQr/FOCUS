@@ -1,0 +1,297 @@
+================================================================================
+  HIPERAPP (FOCUS) - SISTEMA DE HIPERPRODUCTIVIDAD E INTEGRACIÓN TOTAL DE IA
+                 DOCUMENTACIÓN TÉCNICA Y RESUMEN EJECUTIVO DETALLADO
+================================================================================
+Tree Tech Solutions · Versión 1.0 · Producción & Escalabilidad Corporativa
+================================================================================
+
+--------------------------------------------------------------------------------
+1. FICHA TÉCNICA Y VISIÓN GENERAL DEL PRODUCTO
+--------------------------------------------------------------------------------
+• Nombre del Sistema: HiperApp (Focus)
+• Empresa / Desarrollador: Tree Tech Solutions
+• Arquitectura Móvil: Flutter (Dart 3.x) + Riverpod + GoRouter + Dio
+• Arquitectura Backend: API RESTful / FastAPI (Python 3.11+) & Django REST
+• Infraestructura Cloud: Sevalla Cloud App Platform (PostgreSQL + Redis + JWT)
+• Enfoque Principal: Gestión de Hiperproductividad, Asistencia por Inteligencia
+  Artificial, Seguridad de Nivel Gubernamental y Colaboración Empresarial.
+• Licencia / Estado: Propietario / Producción & Escalabilidad.
+
+--------------------------------------------------------------------------------
+2. PROPUESTA DE VALOR COMPLETA Y VISIÓN DEL PRODUCTO
+--------------------------------------------------------------------------------
+HiperApp (Focus) es una plataforma de hiperproductividad orientada a empresas y
+entornos gubernamentales con altos requisitos de seguridad, trazabilidad operativa
+e inteligencia de datos.
+
+2.1 Problemas Operativos que Resuelve:
+• Fricción Cognitiva en la Ingesta de Tareas: Elimina la pérdida de tiempo al
+  clasificar manualmente tareas mediante un motor de Inteligencia Artificial que
+  procesa voz y texto libre no estructurado (NLP).
+• Fragmentación y Falta de Visibilidad Ejecutiva: Proporciona a Directores y
+  Super Administradores (SA) y Administradores de Área (AA) visibilidad en
+  tiempo real del rendimiento por trabajador y avance de proyectos.
+• Cuellos de Botella no Detectados: Anticipa retrasos operativos mediante
+  algoritmos predictivos de IA que evalúan la velocidad de ejecución.
+• Vulnerabilidad de Datos y Falta de Cumplimiento: Supera los riesgos de apps
+  de consumo gracias a una arquitectura aislada, RBAC de 5 niveles, auditoría
+  inmutable ISO 27001 / GxP y seguridad OWASP.
+
+2.2 Métricas de Impacto y ROI Estimado:
+• Reducción del 65% en el tiempo de registro e ingesta de actividades diarias.
+• Detección temprana de cuellos de botella con hasta 48 horas de antelación.
+• 100% de trazabilidad auditada de cambios en actividades y proyectos.
+• Disponibilidad del 100% en campo gracias a su motor Offline-First con SQLite.
+
+--------------------------------------------------------------------------------
+3. ARQUITECTURA E INTEGRACIÓN PROFUNDA DE INTELIGENCIA ARTIFICIAL (IA)
+--------------------------------------------------------------------------------
+HiperApp integra la Inteligencia Artificial de forma transversal en tres motores:
+
+┌────────────────────────────────────────────────────────────────────────┐
+│                        MOTOR TRANSVERSAL DE IA                         │
+├──────────────────────────┬──────────────────────────┬──────────────────┤
+│   a) Captura Inteligente │  b) Analítica Predictiva │ c) Automatización│
+│      & NLP (Voice/Text)  │     & Salud de Proyectos │    Contextual    │
+└──────────────────────────┴──────────────────────────┴──────────────────┘
+
+3.1 Motor NLP y Captura Multimodal (Voice-to-Action):
+• Ingesta de texto y notas de voz procesadas en tiempo real.
+• Extracción Inteligente de Entidades:
+  - Título normalizado y resumen ejecutivo.
+  - Clasificación de estado (Bandeja, Hoy, Mañana, Programado, Pendientes).
+  - Determinación de urgencia e impacto (Prioridad Baja, Media, Alta, Crítica).
+  - Extracción sintáctica de fechas y horas límite (ej: "este viernes a las 4pm").
+  - Identificación automática de tags y sugerencia de vinculación a Proyectos/Áreas.
+• Análisis Multimodal: Extracción de tareas a partir de fotografías de minutas en
+  pizarras, documentos impresos o audios de reuniones.
+
+3.2 Motor de Analítica Predictiva y Salud de Proyectos:
+• Algoritmo de Estimación de Velocidad: Calcula la tasa de resolución media
+  por trabajador (TA) y por equipo de área.
+• Detección Preventiva de Sobrecarga (Burnout Index): Alerta a los Administradores
+  de Área cuando un trabajador acumula tareas críticas por encima de su capacidad.
+• Reorganización Asistida de Carga: Sugiere la reasignación óptima de tareas
+  entre miembros disponibles del mismo departamento.
+
+3.3 Motor de Automatización Contextual:
+• Re-priorización Nocturna Autónoma: Revalúa automáticamente al final de cada
+  jornada las tareas en "Hoy" no completadas, sugiriendo reprogramación o movimiento
+  a "Pendientes".
+• Resúmenes Ejecutivos Automatizados: Generación de reportes de avance de proyectos
+  para Super Administradores.
+
+--------------------------------------------------------------------------------
+4. COMPOSICIÓN Y ESTRUCTURA DETALLADA PANTALLA POR PANTALLA (FLUTTER)
+--------------------------------------------------------------------------------
+La aplicación móvil Flutter se compone de 14 pantallas estructuradas en flujos:
+
+                               ┌──────────────────┐
+                               │ StartupAnimation │ (/splash)
+                               └────────┬─────────┘
+                                        │
+                         ┌──────────────┴──────────────┐
+                         ▼                             ▼
+                 ┌──────────────┐              ┌──────────────┐
+                 │ LoginScreen  │              │ Register     │
+                 └──────┬───────┘              └──────────────┘
+                        │
+         ┌──────────────┼──────────────┐
+         ▼              ▼              ▼
+  ┌────────────┐  ┌───────────┐  ┌───────────┐
+  │ Onboarding │  │ Biometric │  │  Invite   │ (/join, /invite/:token)
+  └────────────┘  └───────────┘  └───────────┘
+                        │
+                        ▼
+               ┌─────────────────┐
+               │    MainShell    │ (Bottom Nav Bar)
+               └────────┬────────┘
+  ┌─────────────────────┼─────────────────────┬─────────────────────┐
+  ▼                     ▼                     ▼                     ▼
+┌──────────────┐      ┌──────────────┐      ┌──────────────┐      ┌──────────────┐
+│  Dashboard   │      │   Capture    │      │   Projects   │      │    Stats     │
+│ (/ & detail) │      │  (/capture)  │      │ (/ & detail) │      │   (/stats)   │
+└──────────────┘      └──────────────┘      └──────────────┘      └──────────────┘
+  │                                           │                     │
+  ├─► /activity/:id                           └─► /projects/:id     ├─► /team
+  └─► /historial                                                    ├─► /profile
+                                                                    └─► /profile/security
+
+4.1 Flujo de Arranque y Autenticación:
+1. StartupAnimationScreen (/splash):
+   - Animación de marca (Tree Tech Solutions / Focus).
+   - Verificación silenciosa de credenciales guardadas en Flutter Secure Storage.
+2. LoginScreen (/login):
+   - Autenticación por correo y contraseña.
+   - Validación de Device Fingerprint para garantizar una única sesión activa.
+   - Botón de acceso biométrico directo.
+3. RegisterScreen (/register): Formulario de alta inicial de usuarios.
+4. OnboardingScreen (/onboarding): Tour interactivo de 3 pantallas que explica la
+   filosofía de hiperproductividad, IA y colaboración por áreas.
+5. BiometricScreen (/biometric): Configuración de autenticación por huella dactilar
+   o FaceID con establecimiento de PIN cifrado de 4 dígitos como respaldo.
+6. InviteScreen (/join y /invite/:token):
+   - Formulario para unirse a un Área mediante código manual o Deep Link.
+   - Verificación en tiempo real del token de invitación.
+
+4.2 Flujo Principal (ShellRoute - MainShell con Bottom Navigation Bar):
+7. DashboardScreen (/):
+   - Selector de Alcance (SegmentedButton): Todas / Personales / Equipo (según rol).
+   - Secciones filtradas por estado: Hoy, Mañana, Programado, Pendientes, Completadas.
+   - Tarjetas interactivas con Slidable (deslizar a la izquierda para completar, a la
+     derecha para reprogramar).
+8. ActivityDetailScreen (/activity/:id):
+   - Detalle completo de la tarea (Título, descripción, proyecto, área, responsable).
+   - Galería de archivos adjuntos (imágenes, audios con reproductor integrado, PDF).
+   - Registro de auditoría / Bitácora de cambios en la actividad (Logs de estado).
+9. HistorialScreen (/historial):
+   - Registro cronológico de actividades completadas con búsqueda y filtros por fecha.
+10. CaptureScreen (/capture):
+    - Interfaz de captura rápida impulsada por IA NLP.
+    - Botón de grabación de audio en tiempo real y selector de archivos/imágenes.
+    - Selector dinámico de fecha, hora, estado y proyecto.
+11. ProjectsScreen (/projects):
+    - Pestañas superiores: "Personales" y "Equipo / Para AA".
+    - Tarjetas de proyectos con barra de porcentaje de avance, conteo de actividades
+      abiertas/cerradas y badge de área asignada.
+    - Botón flotante para crear nuevo proyecto con asignación de rol.
+12. ProjectDetailScreen (/projects/:id):
+    - Encabezado con métricas de progreso del proyecto.
+    - Lista de actividades vinculadas con filtro por responsable.
+    - Creación rápida de actividades asociadas directamente al proyecto.
+13. StatsScreen (/stats):
+    - Vista adaptativa según rol RBAC:
+      * SA: Rendimiento global por Áreas y ranking de avance de proyectos.
+      * AA: Rendimiento de trabajadores del área (Worker Stats) y métricas de equipo.
+      * TA / Personal: Cuadro de efectividad personal y desglose de tareas resueltas.
+    - Gráficos interactivos de barra y tarjetas de KPI.
+14. TeamScreen (/team):
+    - Lista de miembros del equipo con roles (SA, AA, TA).
+    - Generador de invitaciones con creación de enlaces/códigos y expiración.
+    - Creación inline de nuevas Áreas organizacionales (exclusivo SA/AA).
+15. AssignScreen (/team/assign/:activityId):
+    - Pantalla modal para delegar una actividad a cualquier miembro del área.
+16. ProfileScreen (/profile) y SecurityScreen (/profile/security):
+    - Información del usuario, avatar, rol actual y área.
+    - Interruptor de Tema (Claro / Oscuro) con persistencia local.
+    - Ajustes de seguridad: Cambio de PIN, activar/desactivar biometría y ver sesiones.
+
+--------------------------------------------------------------------------------
+5. ARQUITECTURA DE CÓDIGO Y PATRONES DE DISEÑO (FRONTEND FLUTTER)
+--------------------------------------------------------------------------------
+5.1 Estructura del Código (Clean Architecture + Feature-First):
+lib/
+├── core/
+│   ├── api/        # ApiClient (Dio), Interceptores JWT (Refresh Token), ApiEndpoints
+│   ├── router/     # GoRouter, _AuthRouterNotifier, Guards de navegación
+│   ├── storage/    # LocalSecureStorage, LocalPrefs
+│   ├── theme/      # AppColors (HSL Dark/Light), AppTextStyles, AppTheme
+│   ├── utils/      # Rules puras RBAC (activity_scope, projects_access, project_kind)
+│   └── widgets/    # MainShell, AppSnackBar, botones y campos compartidos
+├── features/       # Módulos desacoplados (auth, capture, dashboard, profile, projects, stats, team)
+│   └── [feature]/
+│       ├── providers/ # Gestión de estado con Riverpod
+│       └── screens/   # Pantallas y sub-widgets de UI
+└── shared/         # Modelos de datos (User, Activity, Project) y Enums
+
+5.2 Patrón de Estado con Riverpod:
+• Uso de StateNotifierProvider y AsyncNotifierProvider para reactividad pura.
+• Invalidation explícita de providers al cambiar datos para mantener sincronizada la UI.
+• _AuthRouterNotifier implementa Listenable para que GoRouter revalúe redirecciones
+  sin reconstruir todo el árbol de widgets.
+
+5.3 Motor Offline-First y Sincronización Local:
+• Lectura y escritura inmediata en SQLite (sqflite).
+• Registro de transacciones pendientes en cola local.
+• Sincronización bidireccional automática en segundo plano mediante Dio al detectar
+  conectividad (connectivity_plus).
+
+--------------------------------------------------------------------------------
+6. ESTRUCTURA Y ARQUITECTURA COMPLETA DEL BACKEND (FASTAPI / REST)
+--------------------------------------------------------------------------------
+6.1 Diagrama de Arquitectura de Capas Backend:
+
++-----------------------------------------------------------------------------+
+|                    FLUTTER MOBILE CLIENT (iOS / Android)                    |
++-----------------------------------------------------------------------------+
+                                       │
+                           (HTTPS / REST / JSON JWT)
+                                       ▼
++-----------------------------------------------------------------------------+
+|                         FASTAPI BACKEND ARCHITECTURE                        |
++-----------------------------------------------------------------------------+
+| 1. CAPA DE MIDDLEWARE & SEGURIDAD                                           |
+|    - Rate Limiter (Protección DDoS / Fuerza Bruta)                          |
+|    - Security Headers Middleware (OWASP, HSTS, CSP)                         |
+|    - Device Fingerprint Validator & JTI Blacklist (Revocación de Sesión)    |
++-----------------------------------------------------------------------------+
+| 2. CAPA DE RUTAS / API ENDPOINTS (/api/v1/*)                                |
+|    - AuthRoutes (/auth/login, /auth/biometric/login, /auth/refresh)        |
+|    - UsersRoutes (/users/invite, /accept-invite, /users/me)                 |
+|    - AreasRoutes (/areas/, /areas/{id}/members)                             |
+|    - ActivitiesRoutes (/activities/, /move, /complete, /assign, /logs)      |
+|    - ProjectsRoutes (/projects/, /progress, /activities)                    |
+|    - StatsRoutes (/stats/personal, /stats/global, /stats/workers)           |
++-----------------------------------------------------------------------------+
+| 3. CAPA DE SERVICIOS (LÓGICA DE NEGOCIO & ENGINE IA)                        |
+|    - AuthService | ActivityService | ProjectService | AreaService           |
+|    - AIService (Procesador NLP, Predictor de Cuellos de Botella, Voice Engine) |
+|    - AuditService (ISO 27001 / Registro Inmutable de Bitácora)              |
++-----------------------------------------------------------------------------+
+| 4. CAPA DE REPOSITORIOS (ACCESO A DATOS & SCHEMAS)                          |
+|    - SQLAlchemy ORM Models (User, Activity, Project, Area, AuditLog)        |
+|    - Pydantic v2 Schemas (Validación estricta de Entradas/Salidas)          |
++-----------------------------------------------------------------------------+
+| 5. PERSISTENCIA E INFRAESTRUCTURA (SEVALLA CLOUD)                           |
+|    - PostgreSQL (Base de Datos Relacional con Cifrado en Reposo)            |
+|    - Redis (Gestión de Caché, Rate Limiting y Estado de Tokens Revocados)   |
++-----------------------------------------------------------------------------+
+
+6.2 Esquema de Modelos ORM Principales:
+• User: id, email, password_hash, rol (SA/AA/TA/Personal), area_id, biometric_enabled,
+  created_at.
+• Area: id, nombre, descripcion, created_by_id, created_at.
+• Project: id, titulo, descripcion, area_id, created_by_id, estado, created_at.
+• Activity: id, titulo, descripcion, estado (bandeja, hoy, manana, programado,
+  pendientes, completada), prioridad, owner_id, assigned_to_id, project_id, area_id,
+  target_date, created_at.
+• ActivityLog: id, activity_id, user_id, accion, estado_anterior, estado_nuevo,
+  timestamp.
+• AuditLog (ISO 27001): id, user_id, ip_address, device_fingerprint, accion,
+  detalle, timestamp.
+
+--------------------------------------------------------------------------------
+7. MODELO DE SEGURIDAD, RBAC Y CUMPLIMIENTO (GxP / ISO 27001 / OWASP)
+--------------------------------------------------------------------------------
+7.1 Tabla de Roles Granulares (RBAC):
+• SUPER_ADMIN (SA) [Nivel 100]: Control total, auditoría del sistema, gestión de áreas.
+• ADMIN DE ÁREA (AA) [Nivel 90]: Gestión de proyectos de equipo y supervisión de trabajadores.
+• TRABAJADOR DE ÁREA (TA) [Nivel 50]: Ejecución de actividades asignadas y gestión personal.
+• CUENTA PERSONAL [Nivel 30]: Entorno de productividad individual independiente.
+• INVITADO [Nivel 20]: Permisos de lectura controlada en estancias específicas.
+
+7.2 Mecanismos de Seguridad Activa:
+• Token JWT con revocación 'jti' y huella digital del dispositivo (Device Fingerprint).
+• Restricción estricta de una sola sesión activa por dispositivo.
+• Registro auditado inmutable (Bitácora de Eventos) conforme a ISO 27001 y GxP.
+• Encriptación en reposo y en tránsito (HTTPS/TLS 1.3).
+• Políticas OWASP contra ataques de fuerza bruta y rate-limiting en API REST.
+
+--------------------------------------------------------------------------------
+8. GUÍA DE EJECUCIÓN Y PRUEBAS QA
+--------------------------------------------------------------------------------
+• Instalación de dependencias:
+  flutter pub get
+
+• Generación de código:
+  dart run build_runner build --delete-conflicting-outputs
+
+• Análisis estático:
+  dart analyze
+
+• Formato de código:
+  dart format .
+
+• Compilación APK para Producción:
+  flutter build apk --release
+================================================================================
