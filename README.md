@@ -6,38 +6,40 @@
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16.0-316192?style=for-the-badge&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![Redis](https://img.shields.io/badge/Redis-7.x-DC382D?style=for-the-badge&logo=redis&logoColor=white)](https://redis.io/)
 [![Docker](https://img.shields.io/badge/Docker-Enabled-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com/)
-[![ISO 27001](https://img.shields.io/badge/ISO_27001-Compliant-blue?style=for-the-badge)](https://www.iso.org/isoiec-27001-information-security.html)
-[![GxP Quality](https://img.shields.io/badge/GxP-Validated-green?style=for-the-badge)](#)
+[![Security](https://img.shields.io/badge/Security-Inspired_by_ISO%2FIEC_27001_Controls-blue?style=for-the-badge)](https://www.iso.org/isoiec-27001-information-security.html)
+[![Auditability](https://img.shields.io/badge/Auditability-Designed_for_Traceability-0B6B4F?style=for-the-badge)](#)
 
-Ecosistema de hiperproductividad corporativa e institucional diseñado para optimizar la gestión del trabajo individual y colaborativo en entornos de alta exigencia operacional. Combina un cliente móvil reactivo en Flutter con soporte Offline-First, un backend distribuido en Django REST Framework / PostgreSQL / Redis y un motor transversal de Inteligencia Artificial galardonado.
+Plataforma de productividad corporativa e institucional orientada a mejorar la gestión del trabajo individual y colaborativo en entornos de alta exigencia operacional. Integra un cliente móvil en Flutter, capacidades offline-first, servicios backend con Django REST Framework, PostgreSQL y Redis, además de componentes de automatización e inteligencia artificial en evolución.
+
+> **Estado del proyecto:** MVP funcional en evolución. El cliente Flutter cuenta con componentes reales de navegación, almacenamiento seguro, biometría, persistencia local y manejo de conectividad. Algunas capacidades backend, predictivas y de automatización descritas en este documento representan arquitectura objetivo o funcionalidades en validación.
 
 ---
 
 ## 1. Reconocimiento Institucional C5 Morelos 2025
 
-HiperApp ha sido reconocido por el **Centro de Coordinación, Comando, Control, Comunicaciones y Cómputo (C5) de Morelos** (2025) por el logro técnico y la innovación operacional demostrada en la implementación de Inteligencia Artificial y la gestión de procesos críticos en sistemas institucionales.
+Este proyecto forma parte de la experiencia técnica por la cual recibí un reconocimiento del **Centro de Coordinación, Comando, Control, Comunicaciones y Cómputo (C5) de Morelos** en 2025, relacionado con aportaciones tecnológicas e integración práctica de inteligencia artificial y automatización. El reconocimiento documenta una contribución individual y no implica certificación, validación formal del producto ni respaldo institucional de TreeTech.
 
 ![Reconocimiento C5 Morelos 2025 - Implementación de Inteligencia Artificial](assets/recognitions/c5-morelos-recognition-2025.PNG)
 
 ---
 
-## 2. Propuesta de Valor y Métricas Operacionales
+## 2. Propuesta de Valor y Objetivos de Validación
 
-El sistema resuelve de manera integral la ineficiencia en la ingesta de datos, la opacidad en el avance de proyectos y el riesgo de cuellos de botella mediante un enfoque de ingeniería centrado en rendimiento y trazabilidad.
+El sistema busca reducir fricción en la captura de tareas, mejorar la visibilidad del avance de proyectos y facilitar la detección temprana de cuellos de botella mediante un enfoque de ingeniería centrado en rendimiento, trazabilidad y validación progresiva.
 
-| Dimensión Operativa | Desafío Tradicional | Solución Implementada en HiperApp | Métrica / ROI Logrado |
+| Dimensión Operativa | Desafío Tradicional | Capacidad Diseñada / Implementada | Objetivo o Hipótesis por Validar |
 | :--- | :--- | :--- | :--- |
-| Ingesta de Tareas | Formularios manuales lentos | Captura multimodal por IA NLP (Voz y Texto libre) | Reducción del 65% en tiempo de registro |
-| Visibilidad Ejecutiva | Informes desactualizados | Tablero interactivo con desglose RBAC por área | 100% de visibilidad en tiempo real |
-| Riesgo de Entregas | Detección tardía del retraso | Algoritmo predictivo de salud de proyectos | Alerta preventiva a 48h |
-| Seguridad y Auditoría | Registros alterables o ausentes | Auditoría inmutable ISO 27001 / GxP | 100% de trazabilidad operacional |
-| Operatividad en Campo | Dependencia de red celular | Motor local SQLite con sincronización bidireccional | 100% disponibilidad Offline |
+| Ingesta de Tareas | Formularios manuales lentos | Captura asistida por voz y texto libre | Reducir de forma medible el tiempo de registro frente a formularios tradicionales |
+| Visibilidad Ejecutiva | Informes desactualizados | Tablero interactivo con desglose RBAC por área | Mejorar la visibilidad operativa con información actualizada y filtrada por rol |
+| Riesgo de Entregas | Detección tardía del retraso | Modelo de alertas y análisis de carga en evolución | Anticipar posibles retrasos con suficiente tiempo para intervención humana |
+| Seguridad y Auditoría | Registros alterables o ausentes | Bitácora de eventos, control de acceso y trazabilidad inspirada en buenas prácticas de seguridad | Mantener evidencia suficiente para revisar acciones críticas y cambios de estado |
+| Operatividad en Campo | Dependencia de red celular | Persistencia local con SQLite y estrategia de sincronización | Mantener continuidad de uso durante interrupciones de conectividad, sujeta a validación técnica |
 
 ---
 
-## 3. Arquitectura Transversal de Inteligencia Artificial
+## 3. Arquitectura de Inteligencia Artificial y Automatización
 
-El motor de IA de HiperApp opera a través de tres componentes especializados desacoplados de la UI:
+La arquitectura propuesta separa la interfaz de usuario de los componentes de captura asistida, análisis y automatización. Algunas capacidades se encuentran implementadas y otras permanecen en fase de evolución o validación.
 
 ```mermaid
 flowchart LR
@@ -69,16 +71,16 @@ flowchart LR
   * Parseo sintáctico de fechas y horas límite (ej. *"entregar este viernes a las 16:00"*).
   * Auto-etiquetado y vinculación a proyectos u organizaciones.
 
-### 3.2 Analítica Predictiva y Balanceo de Carga (Burnout Index)
-* **Evaluación de Velocidad por Área**: Algoritmo que monitorea el tiempo promedio de resolución por trabajador (`trabajador`).
-* **Detector de Saturación**: Emite alertas preventivas cuando un integrante del equipo supera el umbral de capacidad operativa.
-* **Reasignación Sugerida**: Propone al Administrador de Área (`admin_area`) la delegación óptima a miembros con disponibilidad.
+### 3.2 Analítica de Carga y Recomendaciones Operativas
+* **Evaluación de Ritmo por Área**: Diseño orientado a estimar tiempos promedio de resolución por integrante y por área.
+* **Detección de Saturación**: Capacidad planteada para identificar señales de sobrecarga a partir de reglas y métricas configurables.
+* **Reasignación Sugerida**: Propone alternativas de redistribución para revisión del Administrador de Área (`admin_area`), sin ejecutar cambios críticos de forma autónoma.
 
 ---
 
 ## 4. Interfaces Visuales y Experiencia de Usuario (UI/UX)
 
-La aplicación móvil cuenta con un sistema de diseño adaptativo en modos Claro y Oscuro con tokens HSLTailored, micro-animaciones fluidas y gestos táctiles avanzables.
+La aplicación móvil incluye un sistema de diseño adaptativo en modos claro y oscuro, tokens visuales reutilizables, microanimaciones y gestos táctiles orientados a mejorar la experiencia de uso.
 
 ![Diseño de Aplicación para Productividad](assets/Diseño_de_aplicación_para_productividad.png)
 
@@ -129,7 +131,7 @@ graph TD
 
 ## 5. Arquitectura del Backend y Stack Tecnológico
 
-El backend distribuido está desarrollado en **Django REST Framework (DRF)** y optimizado para despliegues escalables e infraestructuras críticas.
+El backend está planteado sobre **Django REST Framework (DRF)** con una arquitectura modular orientada a escalabilidad, separación de responsabilidades y despliegues reproducibles.
 
 ![Arquitectura Backend y Stack Tecnológico](assets/Arquitectura_backend_y_stack_tecnológico.png)
 
@@ -189,7 +191,7 @@ graph TD
     ActivitiesApp --> StatsApp[apps.stats]
 ```
 
-### 6.1 Diagrama Entidad-Relación de Modelos Principales (SQLAlchemy / DRF)
+### 6.1 Diagrama Entidad-Relación de Modelos Principales (Django ORM / DRF)
 
 ```
 ┌────────────────────────────────┐       ┌────────────────────────────────┐
@@ -237,9 +239,9 @@ graph TD
 
 ---
 
-## 7. Modelo de Seguridad, RBAC y Cumplimiento Normativo
+## 7. Modelo de Seguridad, RBAC y Buenas Prácticas
 
-HiperApp implementa un esquema de seguridad defensiva en profundidad validado contra estándares internacionales.
+HiperApp incorpora un enfoque de defensa en profundidad inspirado en buenas prácticas de seguridad, control de acceso y trazabilidad. No se presenta como una certificación formal ni como cumplimiento auditado de un estándar.
 
 ```mermaid
 flowchart TD
@@ -251,7 +253,7 @@ flowchart TD
     Blacklist --> Fingerprint[Device Fingerprint Check: Validación de Dispositivo Único]
     Fingerprint --> RBAC[Capa RBAC: Verificación de Permisos por Rol]
     RBAC --> Service[Ejecución en Servicios]
-    Service --> Audit[Bitácora de Auditoría Inmutable ISO 27001 / GxP]
+    Service --> Audit[Bitácora de Auditoría y Trazabilidad]
 ```
 
 ### 7.1 Matriz de Control de Acceso Basado en Roles (RBAC)
@@ -265,7 +267,7 @@ flowchart TD
 ### 7.2 Estándares y Mecanismos de Seguridad Implementados
 * **Sesión Única por Dispositivo**: Rotación estricta de tokens con `jti` invalidando accesos concurrentes desde otros dispositivos.
 * **Bloqueo Inteligente de Ataques**: `django-axes` bloquea automáticamente IPs tras 5 intentos fallidos de autenticación.
-* **Auditoría ISO 27001 / GxP**: Registro inmutable de cada acción con estampado de tiempo, IP, dispositivo y estado previo/nuevo.
+* **Auditoría y Trazabilidad**: Registro de acciones relevantes con fecha, contexto técnico y cambios de estado. Su grado de inmutabilidad y cobertura debe validarse con pruebas específicas.
 * **Cabeceras de Seguridad HSTS/CSP**: Implementadas mediante `django-csp` para evitar ataques XSS y Clickjacking.
 
 ---
@@ -287,15 +289,17 @@ lib/
 ```
 
 ### 8.1 Estrategia de Sincronización Bidireccional
-1. **Lectura y Escritura Local Inmediata**: La interfaz gráfica responde a la base de datos local SQLite (`sqflite`), ofreciendo una latencia de 0 ms.
+1. **Lectura y Escritura Local Inmediata**: La interfaz prioriza la persistencia local con SQLite (`sqflite`) para reducir latencia percibida y mantener continuidad de uso.
 2. **Registro de Operaciones Pendientes**: Si el dispositivo no tiene red, los cambios se encolan en una tabla de transacciones.
 3. **Sincronización en Segundo Plano**: Al recuperar señal (`connectivity_plus`), el motor ejecuta un flush de la cola de transacciones contra los endpoints REST de Django.
 
 ---
 
-## 9. Especificación Completa de la API REST Backend
+## 9. Especificación de la API REST Backend
 
-Base URL de Producción: `https://focus-backend-u211p.sevalla.app`
+> Los endpoints siguientes documentan el contrato esperado del backend. La disponibilidad de cada ruta debe confirmarse contra la versión desplegada y el estado actual del código.
+
+Base URL del entorno desplegado: `https://focus-backend-u211p.sevalla.app`
 
 ### 9.1 Endpoints de Autenticación (`/api/auth/`)
 ```http
@@ -337,7 +341,7 @@ Content-Type: application/json
 
 ```bash
 # Clonar y entrar al repositorio de backend
-git clone https://github.com/tu-usuario/Focus-Backend.git
+git clone https://github.com/MrFtyoQr/FOCUS.git
 cd Focus-Backend
 
 # Crear y activar entorno virtual
@@ -396,7 +400,7 @@ flutter build apk --release
 
 ## 11. Pruebas y Aseguramiento de Calidad (QA)
 
-El proyecto cuenta con un suite de pruebas automatizadas tanto en cliente como en servidor.
+El proyecto contempla pruebas automatizadas en cliente y servidor. La cobertura y los resultados deben documentarse con evidencia reproducible conforme avance la implementación.
 
 ```bash
 # Ejecutar suite de pruebas en backend Django
@@ -411,4 +415,4 @@ flutter test
 
 ---
 
-Distributed under the MIT License. Developed by **Tree Tech Solutions**.
+Distributed under the MIT License. Developed by **Joseph Quintana / TreeTech**.
